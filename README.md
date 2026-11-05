@@ -55,7 +55,7 @@ The page is a thin client over the REST API (`web/static/web/js/`). It is plain 
 
 ![The packing assistant recommending a box](docs/screenshots/assistant-chat.png)
 
-*Screenshot from the automated browser test. The live server ran the real Anthropic SDK and the real tools, while the model's replies were scripted, so the test needs no API key.*
+*A real answer from Gemini (`gemini-3.6-flash`) on the live site. The model called the product lookup and packing tools and created the order; the numbers come from the 3D packing engine. The automated browser tests cover the same flow with scripted model replies, so they need no API key.*
 
 The assistant is the "AI-assisted" part of box selection. Staff can type requests such as:
 
@@ -154,7 +154,7 @@ Among usable boxes, the business wants the **cheapest**. Comparing total volumes
 * **Production hygiene.** Requests are strictly validated (unknown and read-only fields are rejected). Errors share one envelope, internals never leak, and logs are JSON. Throttling is on, security headers are set, a DB-aware health check is available, and the service runs as a non-root Gunicorn container.
 * **Web interface.** An order builder, an interactive 3D packing plan with a loading-sequence player, order history, and product/box management. Served by Django at `/`.
 * **AI assistant.** A resizable chat console powered by Gemini (free tier) or Claude, using tools over the real services. It creates orders, runs the packer, explains rejections and looks up orders, streaming its answers.
-* **Tests and CI.** About 687 Python tests with ~98% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
+* **Tests and CI.** About 688 Python tests with ~98% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
 
 ## 3. Architecture
 
