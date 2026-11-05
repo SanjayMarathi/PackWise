@@ -8,6 +8,10 @@ import os
 
 import pytest
 from django.core.management import call_command
+from playwright.sync_api import expect
+
+# `expect` has its own 5 s default (separate from page timeouts); CI machines are slower.
+expect.set_options(timeout=15_000)
 
 # Playwright's sync API runs an asyncio loop in the test thread. Django's ORM refuses
 # to run in a thread with a running loop unless explicitly allowed. The ORM calls

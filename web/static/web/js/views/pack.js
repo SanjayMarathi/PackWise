@@ -16,7 +16,7 @@ export async function renderPack(root, { strategies, defaultStrategy }) {
   strategy.addEventListener("change", () => {
     state.strategy = strategy.value;
   });
-  const submit = h("button", { class: "btn btn-primary btn-block", type: "button", "data-testid": "find-box" }, icon("package", 18), "Find the best box");
+  const submit = h("button", { class: "btn btn-primary btn-block", type: "button", "data-testid": "find-box" }, "Find the best box", icon("arrow", 18));
   submit.addEventListener("click", () => withBusy(submit, "Packing in 3D…", () => findBox(resultArea)));
 
   const builder = h(
@@ -39,7 +39,10 @@ export async function renderPack(root, { strategies, defaultStrategy }) {
   );
 
   root.append(
-    pageHead("Pack an order", "Pick products and quantities. PackWise places every unit inside each active box in 3D and recommends the cheapest one that really fits."),
+    pageHead(
+      ["Pick · Pack · Ship", "Pack an order"],
+      "Pick products and quantities. PackWise places every unit inside each active box in 3D and recommends the cheapest one that really fits.",
+    ),
     h("div", { class: "pack-layout" }, builder, resultArea),
   );
 
@@ -116,7 +119,6 @@ export async function renderPack(root, { strategies, defaultStrategy }) {
           "div",
           { class: "card empty" },
           icon("package", 110),
-          icon("leaf", 160, "corner-leaf"),
           h("h2", null, "Your recommendation appears here"),
           h("p", null, "Add a few products on the left and press “Find the best box”. You will get the cheapest box that fits, an interactive 3D packing plan, step-by-step loading instructions, ranked alternatives and the reason each other box was rejected."),
           h("p", { class: "muted" }, "Prefer to ask in plain words? Open the packing assistant at the bottom right."),

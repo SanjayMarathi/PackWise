@@ -3,24 +3,27 @@
 // packing instructions and rejected boxes with their reasons.
 
 import { fmt, h, icon, strategyLabel, strategySelect, withBusy } from "../dom.js";
-import { AXIS_COLORS, PackingViewer } from "../viewer.js";
+import { PackingViewer } from "../viewer.js";
 
-// Packaging tones that stay distinguishable from each other and from the kraft box walls:
-// navy, blush, caramel, sage, terracotta, sand, dusty blue, olive, plum, teal, mustard, umber.
-export const PALETTE = [
-  "#2b3a62", "#e3a593", "#cf8a47", "#7d8f5c", "#b4593a", "#dcc69c",
-  "#6f87ab", "#8d8b4b", "#9a6176", "#4f817d", "#d6a63e", "#6b5a4c",
-];
+const FALLBACK_PALETTE = ["#1c1c1c", "#b9b9b9", "#5a5a5a", "#e2e2e2", "#343434", "#9a9a9a"];
 
-/** One stable colour per product across the recommendation and its alternatives. */
+/** Monochrome item tones from the active theme (CSS ``--item-palette``), alternating dark/light. */
+export function palette() {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue("--item-palette");
+  const tones = raw.split(",").map((t) => t.trim()).filter(Boolean);
+  return tones.length ? tones : FALLBACK_PALETTE;
+}
+
+/** One stable tone per product across the recommendation and its alternatives. */
 export function colorMap(payload) {
   const ids = new Set();
   for (const option of [payload.recommendation, ...(payload.alternatives || [])]) {
     for (const p of (option && option.placements) || []) ids.add(p.product_id);
   }
+  const tones = palette();
   const sorted = [...ids].sort((a, b) => a - b);
-  const map = new Map(sorted.map((id, i) => [id, PALETTE[i % PALETTE.length]]));
-  return (id) => map.get(id) || PALETTE[0];
+  const map = new Map(sorted.map((id, i) => [id, tones[i % tones.length]]));
+  return (id) => map.get(id) || tones[0];
 }
 
 export function plural(n, word) {
@@ -149,7 +152,7 @@ function hero(payload, { strategies, onRerun }) {
   return h(
     "section",
     { class: `hero${rec ? "" : " fail"}` },
-    rec ? icon("leaf", 150, "hero-leaf") : null,
+    h("span", { class: "badge-circle", "aria-hidden": "true" }, icon(rec ? "package" : "close", 24)),
     h("div", { class: "stack", style: { gap: "8px" } }, left, h("div", { class: "row muted", style: { fontSize: "13px" } }, meta.map((m, i) => [i ? " · " : "", m])), rerun),
     rec ? h("div", { class: "price num" }, fmt.inr(rec.cost), h("small", null, "per box")) : null,
   );
@@ -168,9 +171,7 @@ function viewerCard(option, index, colorFor) {
     h(
       "span",
       { class: "chip axes" },
-      [["x", "length →"], ["y", "width ↗"], ["z", "height ↑"]].map(([axis, label]) =>
-        h("span", null, h("i", { style: { background: AXIS_COLORS[axis] } }), `${axis} ${label}`),
-      ),
+      [["x", "length →"], ["y", "width ↗"], ["z", "height ↑"]].map(([axis, label]) => h("span", null, h("i"), `${axis} ${label}`)),
     ),
   );
   host.append(overlay);

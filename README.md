@@ -44,7 +44,12 @@ Open the live URL. There are no logins and nothing to install.
 
 The page is a thin client over the REST API (`web/static/web/js/`). It is plain ES modules with no build step, and the 3D view uses three.js (vendored, MIT licence). All business rules live behind the API, so everything the page does is also available and tested through `/api/`. It works on phones (responsive layout) and follows the system light/dark theme.
 
-**Look and feel:** an eco-packaging theme with cream paper, navy ink, kraft cardboard, blush, caramel and sage, plus organic shapes and botanical line-leaves. Headings use Fraunces (vendored, SIL OFL). In the 3D view the shipping box is drawn as an open kraft carton, and items are coloured in packaging tones.
+**Look and feel:**
+* **Colours:** strictly monochrome. Light mode is black on white, dark mode is white on black. A toggle in the top bar remembers your choice; without one, the page follows the system setting.
+* **Type:** uppercase slab-serif headings (Roboto Slab, vendored, Apache 2.0) with wide letter-spacing and small spaced-out labels above them.
+* **Shapes:** hairline cards with circular icon badges.
+* **Backdrop:** faded, tilted "window" cards showing a box catalogue, an isometric 3D packer, a packing slip and a dimensioned carton.
+* **3D view:** items are drawn in alternating dark and light tones with crisp outlines, so neighbouring items stay distinct without colour.
 
 ### The AI assistant
 
@@ -61,7 +66,11 @@ The assistant is the "AI-assisted" part of box selection. Staff can type request
 
 **How it works** ([`assistant/`](assistant/)):
 
-* **Model:** Claude (`claude-opus-5-5`) through the official `anthropic` Python SDK, with tool use. The model never computes fits or prices itself. It calls five tools, which are thin adapters over the existing services:
+* **Model:** either provider works, through its official SDK and with tool use:
+  * **Google Gemini** (`gemini-3.6-flash`, `google-genai` SDK): the default when `GEMINI_API_KEY` is set, because its free tier needs no billing;
+  * **Claude** (`claude-opus-5-5`, `anthropic` SDK).
+
+  The model never computes fits or prices itself. It calls five tools, which are thin adapters over the existing services, and both providers get identical tool schemas:
 
   | Tool | What it does |
   |---|---|
@@ -73,14 +82,27 @@ The assistant is the "AI-assisted" part of box selection. Staff can type request
 
   Every number in an answer therefore comes from the engine and the database. Tool inputs are validated before anything runs, and invalid input goes back to the model as an error result it can recover from.
 * **Streaming:** the reply streams to the browser as NDJSON events: tool progress ("Packing the order in 3D…"), answer text, and result cards with an **Open 3D plan** button.
-* **Conversation history:** stored server-side, **append-only**, and replayed verbatim under a frozen system prompt and tool list. Claude binds its thinking blocks to the exact conversation prefix, so editing history would break them. `drop_block` is set so an unexpected mismatch degrades instead of failing. A reload restores the chat from a stored transcript.
-* **Refusal fallbacks:** server-side refusal fallbacks (`fallbacks: "default"`) are enabled, so a safety-classifier decline is retried on another model instead of failing.
+* **The console:**
+  * resize it by dragging its top-left corner, left edge or top edge; the size is remembered;
+  * maximize it into a large console;
+  * on phones it opens full screen.
+* **Conversation history:** stored server-side, **append-only**, and replayed verbatim under a frozen system prompt and tool list. A reload restores the chat from a stored transcript. Each provider binds its reasoning to the exact conversation, so editing history would break it:
+  * Claude binds its thinking blocks to the prefix; `drop_block` is set so an unexpected mismatch degrades instead of failing;
+  * Gemini attaches *thought signatures* to parts, and every part goes back exactly as received.
+
+  A conversation stays on the provider it started with.
+* **Refusal fallbacks (Claude):** server-side refusal fallbacks (`fallbacks: "default"`) are enabled, so a safety-classifier decline is retried on another model instead of failing. For Gemini, a safety block ends the turn with a polite message and no tools run.
 * **Guardrails for a public demo that calls a paid API:**
   * its own throttle (`THROTTLE_ASSISTANT_RATE`, default 10/min);
   * at most 2,000 characters per message, 8 model calls per answer and 30 messages per conversation;
   * protection against two simultaneous requests on one conversation;
   * typed handling of API errors (bad key, rate limit, outage) with friendly messages.
-* **Configuration:** the assistant turns on when `ANTHROPIC_API_KEY` is set. Without it, the panel says so and everything else works.
+* **Configuration:**
+  * the assistant turns on when `GEMINI_API_KEY` (free at [Google AI Studio](https://aistudio.google.com/apikey)) or `ANTHROPIC_API_KEY` is set;
+  * `PACKWISE_ASSISTANT_PROVIDER` forces one of them;
+  * without a key, the panel says so and everything else works.
+
+  Gemini's free tier has per-project rate limits and lets Google use prompts to improve its products. That's fine for demo data, but don't put real customer data through it.
 
 ---
 
@@ -130,8 +152,8 @@ Among usable boxes, the business wants the **cheapest**. Comparing total volumes
 * **Concurrency-safe persistence.** Results are written under `SELECT … FOR UPDATE`, backed by unique and partial-unique constraints.
 * **Production hygiene.** Requests are strictly validated (unknown and read-only fields are rejected). Errors share one envelope, internals never leak, and logs are JSON. Throttling is on, security headers are set, a DB-aware health check is available, and the service runs as a non-root Gunicorn container.
 * **Web interface.** An order builder, an interactive 3D packing plan with a loading-sequence player, order history, and product/box management. Served by Django at `/`.
-* **AI assistant.** A chat panel powered by Claude with tool use over the real services: it creates orders, runs the packer, explains rejections and looks up orders, streaming its answers.
-* **Tests and CI.** About 660 Python tests with ~99% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
+* **AI assistant.** A resizable chat console powered by Gemini (free tier) or Claude, using tools over the real services. It creates orders, runs the packer, explains rejections and looks up orders, streaming its answers.
+* **Tests and CI.** About 685 Python tests with ~98% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
 
 ## 3. Architecture
 
@@ -396,8 +418,8 @@ Utilization is compared as an exact `Fraction`, so ties are genuine ties. The de
 | Database | PostgreSQL 17 via psycopg 3, `dj-database-url` |
 | API docs | drf-spectacular (OpenAPI 3, Swagger UI, ReDoc) |
 | Serving | Gunicorn, WhiteNoise (static files) |
-| Web interface | Django template + vanilla ES modules (no build step), three.js r160 for the 3D view, Fraunces font |
-| AI assistant | Claude (`claude-opus-5-5`) via the `anthropic` Python SDK 2.5: streaming, tool use, prompt caching, refusal fallbacks |
+| Web interface | Django template + vanilla ES modules (no build step), three.js r160 for the 3D view, Roboto Slab |
+| AI assistant | Gemini (`gemini-3.6-flash`) via `google-genai` 2.34, or Claude (`claude-opus-5-5`) via `anthropic` 2.5: streaming, tool use. Claude also gets prompt caching and refusal fallbacks |
 | Tests | pytest, pytest-django, pytest-cov, DRF `APIClient`, Playwright (browser end-to-end) |
 | Quality | ruff (lint + format), `manage.py check --deploy`, schema validation |
 | DevOps | Docker (multi-stage, non-root), Docker Compose, GitHub Actions, Docker Hub, Hugging Face Spaces (Docker SDK) |
@@ -445,7 +467,10 @@ All configuration comes from environment variables. See [`.env.example`](.env.ex
 | `PACKWISE_MAX_ITEMS_PER_ORDER` | `200` | Max units per order (bounds CPU per request) |
 | `PACKWISE_MAX_LINES_PER_ORDER` | `50` | Max distinct products per order |
 | `PACKWISE_MIN_SUPPORT_RATIO` | `0` | 0 = overhang allowed, 1 = full base support |
-| `ANTHROPIC_API_KEY` | unset (assistant off) | Turns on the AI assistant |
+| `GEMINI_API_KEY` | unset | Turns on the AI assistant with Gemini (free tier) |
+| `ANTHROPIC_API_KEY` | unset | Turns on the AI assistant with Claude |
+| `PACKWISE_ASSISTANT_PROVIDER` | `auto` | `auto` (Gemini if its key is set, else Claude), `gemini` or `claude` |
+| `PACKWISE_GEMINI_MODEL` / `PACKWISE_GEMINI_THINKING` | `gemini-3.6-flash` / `low` | Gemini model and thinking level (`minimal`/`low`/`medium`/`high`) |
 | `PACKWISE_ASSISTANT_MODEL` / `_EFFORT` | `claude-opus-5-5` / `medium` | Model and reasoning effort |
 | `PACKWISE_ASSISTANT_MAX_TOOL_ROUNDS` / `_MAX_TURNS` / `_MAX_MESSAGE_CHARS` | `8` / `30` / `2000` | Per-answer, per-conversation and per-message limits |
 | `THROTTLE_ASSISTANT_RATE` | `10/minute` | Chat rate limit per client |
@@ -642,8 +667,9 @@ ruff check . && ruff format --check .
 | `tests/test_edge_cases.py` | CHECK/UNIQUE/PROTECT constraints, snapshots, error-handler mapping, JSON logging |
 | `tests/test_configuration.py` | Env helpers, production settings fail fast (missing/weak secret, missing hosts), seed command |
 | `tests/test_web.py` | The page renders, the import map and assets resolve, and the page still renders after `collectstatic` with production **manifest** (hashed) storage |
+| `assistant/tests/test_gemini.py` | The Gemini loop through the **real `google-genai` SDK** over a scripted HTTP transport: function calls with ids, thought signatures replayed verbatim (append-only), identical tool schemas, safety blocks, truncated calls never executed, rate-limit/key/model/server errors, provider selection |
 | `assistant/tests/` | The agent loop through the **real Anthropic SDK** over a scripted HTTP transport (no network): multi-round tool use, an append-only history replayed verbatim, request parameters (model, betas, fallbacks, thinking binding, effort, caching), refusal, truncated tool input never executed, API errors, round limit; every tool against real services; the chat API (NDJSON, Accept negotiation, busy/full conversations, throttling) |
-| `e2e/test_assistant.py` | In a real browser: offline state without a key; a streamed chat that creates an order and renders the card, bold and bullet text, a reload that restores the conversation, "Open 3D plan"; error display and starting over |
+| `e2e/test_assistant.py` | In a real browser: offline state without a key; a streamed chat that creates an order and renders the card, bold and bullet text, a reload that restores the conversation, "Open 3D plan"; error display and starting over; console resize, maximize and remembered size; the light/dark toggle (pure black / pure white, persisted) |
 | `e2e/test_ui.py` | In a real browser: pack an order (3D plan, instructions, alternatives, rejections), an order no box fits, re-run from the order page, product create/validate/edit/delete, the delete conflict for a product in use, a deactivated box no longer recommended. Fails on any JavaScript error |
 
 Real output is in [TEST_OUTPUT.md](TEST_OUTPUT.md), and CI runs on every push and pull request.
@@ -714,7 +740,7 @@ flowchart LR
 2. Create the Space (`deploy.py --create`), or let CI create it.
 3. In the Space settings → *Variables and secrets*, add the secrets:
    * `DJANGO_SECRET_KEY`: generate one with `python -c "import secrets; print(secrets.token_urlsafe(64))"`;
-   * `ANTHROPIC_API_KEY` (optional): turns on the AI assistant;
+   * `GEMINI_API_KEY` (optional, free at Google AI Studio) or `ANTHROPIC_API_KEY`: turns on the AI assistant;
    * `DATABASE_URL`: the connection string from step 1.
 4. Deploy:
 

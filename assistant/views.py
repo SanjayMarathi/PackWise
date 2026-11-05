@@ -54,11 +54,17 @@ class AssistantStatusView(APIView):
         tags=["assistant"],
         summary="Whether the AI assistant is configured",
         responses=inline_serializer(
-            "AssistantStatus", {"enabled": serializers.BooleanField(), "model": serializers.CharField()}
+            "AssistantStatus",
+            {
+                "enabled": serializers.BooleanField(),
+                "provider": serializers.CharField(allow_null=True),
+                "model": serializers.CharField(allow_null=True),
+            },
         ),
     )
     def get(self, request):
-        return Response({"enabled": agent.assistant_enabled(), "model": _config()["MODEL"]})
+        provider = agent.assistant_provider()
+        return Response({"enabled": provider is not None, "provider": provider, "model": agent.model_for(provider)})
 
 
 class AssistantChatView(APIView):
@@ -85,9 +91,10 @@ class AssistantChatView(APIView):
         },
     )
     def post(self, request):
-        if not agent.assistant_enabled():
+        provider = agent.assistant_provider()
+        if provider is None:
             raise ServiceUnavailableError(
-                "The AI assistant is not configured on this server (missing ANTHROPIC_API_KEY).",
+                "The AI assistant is not configured on this server (set GEMINI_API_KEY or ANTHROPIC_API_KEY).",
                 code="assistant_unavailable",
             )
         params = ChatRequestSerializer(data=request.data)
@@ -100,6 +107,11 @@ class AssistantChatView(APIView):
 
         if conversation.turns >= _config()["MAX_TURNS"]:
             raise ConflictError("This conversation is full. Start a new chat.", code="conversation_full")
+        if conversation.provider and conversation.provider != provider:
+            raise ConflictError(
+                "This chat was started with a different AI provider. Start a new chat.",
+                code="conversation_provider_changed",
+            )
 
         # Claim the conversation atomically. Two overlapping turns would interleave their appends.
         now = timezone.now()
@@ -114,7 +126,7 @@ class AssistantChatView(APIView):
 
         events = chain(
             [{"type": "conversation", "id": str(conversation.pk)}],
-            agent.run_turn(conversation, params.validated_data["message"]),
+            agent.run_turn(conversation, params.validated_data["message"], provider=provider),
             [{"type": "done"}],
         )
         response = StreamingHttpResponse(agent.encode_events(events), content_type="application/x-ndjson")

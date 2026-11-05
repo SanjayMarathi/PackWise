@@ -53,6 +53,27 @@ async function checkHealth() {
   }
 }
 
+// ---------------------------------------------------------------- light / dark theme
+const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+function currentTheme() {
+  return document.documentElement.getAttribute("data-theme") || (darkQuery.matches ? "dark" : "light");
+}
+
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  const next = currentTheme() === "dark" ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try {
+    window.localStorage.setItem("packwise.theme", next);
+  } catch {
+    // Storage unavailable: the choice lasts for this page only.
+  }
+  route(); // re-render so the 3D view and item tones pick up the new theme
+});
+darkQuery.addEventListener("change", () => {
+  if (!document.documentElement.getAttribute("data-theme")) route();
+});
+
 window.addEventListener("hashchange", route);
 route();
 mountAssistant(document.getElementById("assistant-root"));

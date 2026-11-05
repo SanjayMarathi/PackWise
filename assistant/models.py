@@ -15,6 +15,9 @@ class Conversation(models.Model):
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # "gemini" or "claude". Fixed once the first message is answered: the two APIs store
+    # history in different formats, and each one's signatures only validate on that provider.
+    provider = models.CharField(max_length=20, blank=True, default="")
     messages = models.JSONField(default=list)
     transcript = models.JSONField(default=list)
     turns = models.PositiveIntegerField(default=0)

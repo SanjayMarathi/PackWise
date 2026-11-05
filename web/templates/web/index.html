@@ -5,8 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>PackWise · Box Recommendation</title>
   <meta name="description" content="Pick products and PackWise packs them in 3D to find the cheapest shipping box that fits. Includes an AI packing assistant.">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23c9a173' d='M4 11l12 6v13L4 24z'/%3E%3Cpath fill='%239c7346' d='M28 11l-12 6v13l12-6z'/%3E%3Cpath fill='%23ead6b8' d='M4 11l12-6 12 6-12 6z'/%3E%3Cpath fill='%2322305a' d='M14 6l4 0 0 24-4-2z'/%3E%3C/svg%3E">
-  <link rel="preload" href="{% static 'web/vendor/fonts/fraunces-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <script>
+    // Apply a saved light/dark choice before first paint (no flash). Default: follow the system.
+    (function () {
+      try {
+        var t = localStorage.getItem("packwise.theme");
+        if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      } catch (e) { /* storage unavailable: follow the system */ }
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23fff' stroke='%23000' stroke-width='1.6' stroke-linejoin='round' d='M16 3 28 9.5 16 16 4 9.5z'/%3E%3Cpath fill='%23000' d='M4 9.5 16 16v13L4 22.5z'/%3E%3Cpath fill='%23333' d='M28 9.5 16 16v13l12-6.5z'/%3E%3C/svg%3E">
+  <link rel="preload" href="{% static 'web/vendor/fonts/roboto-slab-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
   <script type="importmap">
     {"imports": {
@@ -17,25 +26,70 @@
 </head>
 <body>
   <div class="backdrop" aria-hidden="true">
-    <svg class="blob-blush" viewBox="0 0 200 200"><path fill="currentColor" d="M44 -8C70 -22 120 -20 150 6s44 70 24 104-74 46-112 30S-2 92 6 58 18 6 44 -8z"/></svg>
-    <svg class="blob-navy" viewBox="0 0 200 200"><path fill="currentColor" d="M60 20c32-18 88-16 112 18s18 92-14 120-86 34-118 4S-2 92 12 62s16-24 48-42z"/></svg>
-    <svg class="blob-caramel" viewBox="0 0 200 200"><path fill="currentColor" d="M100 10a90 90 0 1 1 0 180c-40 0-30-50-60-70S20 10 100 10z"/></svg>
-    <svg class="sprig" viewBox="0 0 120 160" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-      <path d="M60 158C58 110 62 62 78 6"/>
-      <path d="M62 128c-20-4-34-18-38-34 18 2 32 14 38 34z"/><path d="M63 128c18-6 30-20 32-36-16 4-28 16-32 36z"/>
-      <path d="M64 92c-18-6-30-20-32-36 16 4 28 16 32 36z"/><path d="M66 90c16-8 26-22 26-38-14 6-24 18-26 38z"/>
-      <path d="M70 56c-14-6-22-18-22-32 12 4 20 14 22 32z"/><path d="M72 54c12-8 18-20 16-32-10 6-16 16-16 32z"/>
-    </svg>
+    <div class="layer">
+      <div class="bg-window w-catalog">
+        <div class="chrome"><i></i><i></i><i></i><span>box-catalogue.csv</span></div>
+        <table>
+          <tr><td>BX-XS</td><td>15×10×5</td><td>1 kg</td><td>₹12</td></tr>
+          <tr><td>BX-S</td><td>25×20×10</td><td>5 kg</td><td>₹20</td></tr>
+          <tr><td>BX-M</td><td>40×30×20</td><td>15 kg</td><td>₹35</td></tr>
+          <tr><td>BX-M-FLAT</td><td>50×40×10</td><td>15 kg</td><td>₹35</td></tr>
+          <tr><td>BX-L</td><td>60×40×40</td><td>25 kg</td><td>₹55</td></tr>
+          <tr><td>BX-XL</td><td>80×60×50</td><td>35 kg</td><td>₹90</td></tr>
+        </table>
+      </div>
+
+      <div class="bg-window w-iso">
+        <div class="chrome"><i></i><i></i><i></i><span>3d-packer · placing item 4 of 6</span></div>
+        <svg viewBox="0 0 420 240" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+          <!-- container (wireframe) -->
+          <path stroke-dasharray="4 4" d="M70 90 180 30 350 122 240 182Z M70 90v80l170 92 110-60v-80 M240 182v80"/>
+          <!-- packed items -->
+          <path fill="currentColor" fill-opacity=".22" d="M95 120 160 85 230 123 165 158Z"/>
+          <path fill="currentColor" fill-opacity=".38" d="M95 120v38l70 38v-38Z"/>
+          <path fill="currentColor" fill-opacity=".12" d="M165 158v38l65-35v-38Z"/>
+          <path fill="currentColor" fill-opacity=".16" d="M200 96 245 72 320 112 275 136Z"/>
+          <path fill="currentColor" fill-opacity=".34" d="M200 96v26l75 40v-26Z"/>
+          <path fill="currentColor" fill-opacity=".1" d="M275 136v26l45-24v-26Z"/>
+          <path fill="currentColor" fill-opacity=".28" d="M120 98 150 82 185 101 155 117Z"/>
+          <path fill="currentColor" fill-opacity=".45" d="M120 98v18l35 19v-18Z"/>
+          <path fill="currentColor" fill-opacity=".14" d="M155 117v18l30-16v-18Z"/>
+        </svg>
+      </div>
+
+      <div class="bg-window w-slip">
+        <div class="chrome"><i></i><i></i><i></i><span>packing-slip.pdf</span></div>
+        <div class="slip">
+          <strong>PACKING SLIP</strong>
+          <span>ORDER  ORD-20261105-7F3A</span>
+          <span>2 × LAPTOP-14 · 1 × MOUSE-WL</span>
+          <span>BOX  BX-M-FLAT · 2.9 KG · ₹35</span>
+          <div class="barcode"></div>
+        </div>
+      </div>
+
+      <div class="bg-window w-carton">
+        <div class="chrome"><i></i><i></i><i></i><span>carton · 50 × 40 × 10 cm</span></div>
+        <svg viewBox="0 0 340 230" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
+          <path d="M80.7 70 150 30l103.9 60-69.3 40Z"/>
+          <path d="M80.7 70v70l103.9 60 69.3-40V90 M184.6 130v70"/>
+          <path stroke-width="5" stroke-opacity=".35" d="M115.4 50l103.9 60v70"/>
+          <path fill="currentColor" fill-opacity=".08" d="M115.4 35 150 15l52 30-34.7 20Z M115.4 35v35l51.9 30 34.7-20V45"/>
+          <path stroke-dasharray="3 4" d="M70 152l104 60 M194 212l70-40"/>
+          <text x="96" y="214" fill="currentColor" stroke="none" font-size="12" font-family="monospace">40 cm</text>
+          <text x="236" y="212" fill="currentColor" stroke="none" font-size="12" font-family="monospace">50 cm</text>
+        </svg>
+      </div>
+    </div>
   </div>
 
   <header class="topbar">
     <a class="brand" href="#/pack" aria-label="PackWise home">
       <svg viewBox="0 0 32 32" aria-hidden="true">
-        <path class="box-front" d="M4 11l12 6v13L4 24z"/>
-        <path class="box-side" d="M28 11l-12 6v13l12-6z"/>
-        <path class="box-top" d="M4 11l12-6 12 6-12 6z"/>
-        <path class="box-tape" d="M14 6.2l4-.1 0 23.9-4-2z"/>
-        <path class="box-leaf" d="M21 23.5c1.2-2.6 3.4-4 5.6-4.2-.6 2.4-2.6 4-5.6 4.2zM21 23.5l3.4-2.4"/>
+        <path class="box-top" d="M16 3 28 9.5 16 16 4 9.5z"/>
+        <path class="box-left" d="M4 9.5 16 16v13L4 22.5z"/>
+        <path class="box-right" d="M28 9.5 16 16v13l12-6.5z"/>
+        <path class="box-tape" d="M10 6.3 22 12.8"/>
       </svg>
       <span>PackWise</span>
     </a>
@@ -48,6 +102,10 @@
     <div class="topbar-right">
       <span class="health" id="health" title="API status"><span class="dot"></span><span class="label">Checking…</span></span>
       <a class="link-quiet" href="/api/docs/" target="_blank" rel="noopener">API docs ↗</a>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch between light and dark theme" title="Light / dark">
+        <svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+        <svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
     </div>
   </header>
 

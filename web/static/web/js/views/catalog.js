@@ -10,6 +10,7 @@ const dimension = (name, label) => ({ name, label, type: "number", step: "0.01",
 export const PRODUCTS = {
   key: "products",
   endpoint: "/api/products/",
+  eyebrow: "Catalogue",
   title: "Products",
   subtitle: "Items that can be ordered. Dimensions are the item's own outer size, and the engine may rotate it on any axis.",
   singular: "product",
@@ -36,6 +37,7 @@ export const PRODUCTS = {
 export const BOXES = {
   key: "boxes",
   endpoint: "/api/boxes/",
+  eyebrow: "Packaging",
   title: "Shipping boxes",
   subtitle: "Boxes the warehouse stocks. Inactive boxes are never recommended. Listed cheapest first.",
   singular: "box",
@@ -90,7 +92,7 @@ export async function renderCatalog(root, config) {
   const add = h("button", { class: "btn btn-primary", type: "button", "data-testid": `add-${config.singular}` }, icon("plus", 14), `Add ${config.singular}`);
   add.addEventListener("click", () => openForm(config, null, load));
 
-  root.append(pageHead(config.title, config.subtitle, h("div", { class: "search" }, icon("search"), search), active, add), body);
+  root.append(pageHead([config.eyebrow, config.title], config.subtitle, h("div", { class: "search" }, icon("search"), search), active, add), body);
 
   async function load() {
     let data;

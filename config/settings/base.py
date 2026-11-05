@@ -197,8 +197,12 @@ PACKWISE = {
 }
 APP_VERSION = env("APP_VERSION", "1.0.0")
 
-# AI assistant (Claude). Enabled when ANTHROPIC_API_KEY is set in the environment.
+# AI assistant. Enabled when GEMINI_API_KEY (Google AI Studio, free tier) or ANTHROPIC_API_KEY is set.
 PACKWISE_ASSISTANT = {
+    # auto: Gemini if its key is set, else Claude. Or force "gemini" / "claude".
+    "PROVIDER": env("PACKWISE_ASSISTANT_PROVIDER", "auto"),
+    "GEMINI_MODEL": env("PACKWISE_GEMINI_MODEL", "gemini-3.6-flash"),  # stable, free-tier eligible
+    "GEMINI_THINKING": env("PACKWISE_GEMINI_THINKING", "low"),  # minimal | low | medium | high
     "MODEL": env("PACKWISE_ASSISTANT_MODEL", "claude-opus-5-5"),
     # Chat with simple tool sequencing; "medium" balances answer quality and latency.
     "EFFORT": env("PACKWISE_ASSISTANT_EFFORT", "medium"),

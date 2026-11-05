@@ -1,13 +1,16 @@
-"""The assistant's agent loop: Claude + PackWise tools, streamed to the browser as events.
+"""The assistant's agent loop: an LLM plus PackWise tools, streamed to the browser as events.
 
-One user turn = one or more model rounds. Each round streams one Claude
-response. If it asks for tools, they run against the real services, the
-results go back, and the next round starts.
+Two providers implement the same loop. Claude uses the ``anthropic`` SDK and
+Gemini uses ``google-genai`` (see ``gemini.py``). One user turn is one or more
+model rounds. Each round streams one model response. If the response asks for
+tools, they run against the real services, the results go back, and the next
+round starts.
 
-The history is append-only, and every request resends it verbatim under a
-frozen system prompt and tool list. Claude binds its thinking blocks to the
-exact conversation prefix, so any edit would invalidate them.
-``drop_block`` makes an unexpected mismatch degrade instead of failing.
+Both providers keep the history append-only and resend it verbatim under a
+frozen system prompt and tool list. Claude binds its thinking blocks, and
+Gemini its thought signatures, to the exact conversation that produced them,
+so any edit would invalidate them. A conversation stays on the provider it
+started with.
 
 Events yielded to the view (one JSON object per NDJSON line):
   {"type": "status", "text": ...}   a tool is running
@@ -54,17 +57,103 @@ BETAS = [
     "thinking-binding-controls-2026-08-01",  # lets us set thinking.block_binding explicitly
 ]
 
+PROVIDERS = ("gemini", "claude")
+
+
+def _has_gemini_key() -> bool:
+    return bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
+
+
+def _has_claude_key() -> bool:
+    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+
+
+def assistant_provider() -> str | None:
+    """The provider new conversations use: the configured one if its key is set.
+
+    In "auto" mode Gemini is preferred, because its free tier needs no billing.
+    """
+    configured = settings.PACKWISE_ASSISTANT["PROVIDER"]
+    if configured == "gemini":
+        return "gemini" if _has_gemini_key() else None
+    if configured == "claude":
+        return "claude" if _has_claude_key() else None
+    if _has_gemini_key():
+        return "gemini"
+    if _has_claude_key():
+        return "claude"
+    return None
+
 
 def assistant_enabled() -> bool:
-    return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+    return assistant_provider() is not None
+
+
+def model_for(provider: str | None) -> str | None:
+    cfg = settings.PACKWISE_ASSISTANT
+    return {"gemini": cfg["GEMINI_MODEL"], "claude": cfg["MODEL"]}.get(provider)
 
 
 def get_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(max_retries=2, timeout=120.0)
 
 
-def _config() -> dict[str, Any]:
-    return settings.PACKWISE_ASSISTANT
+def get_gemini_client():
+    from . import gemini
+
+    return gemini.get_client()
+
+
+def run_turn(
+    conversation: Conversation, user_text: str, client: Any = None, provider: str | None = None
+) -> Iterator[dict]:
+    """Answer one user message, yielding UI events. Persists history and the transcript."""
+    provider = provider or conversation.provider or assistant_provider() or "claude"
+    if conversation.provider != provider:
+        conversation.provider = provider
+        conversation.save(update_fields=["provider", "updated_at"])
+    entry: dict[str, Any] = {"role": "assistant", "text": "", "cards": []}
+    try:
+        if provider == "gemini":
+            from . import gemini
+
+            yield from gemini.run_rounds(conversation, user_text, client or get_gemini_client(), entry)
+        else:
+            yield from _claude_rounds(conversation, user_text, client or get_client(), entry)
+    finally:
+        conversation.transcript = [
+            *conversation.transcript,
+            {"role": "user", "text": user_text, "cards": []},
+            entry,
+        ]
+        conversation.turns += 1
+        conversation.busy_since = None
+        conversation.save(update_fields=["transcript", "turns", "busy_since", "updated_at"])
+
+
+def persist(conversation: Conversation, messages: list) -> None:
+    # Called only when `messages` ends with a user turn or a finished model turn, so the
+    # stored history is always a valid continuation point.
+    conversation.messages = messages
+    conversation.save(update_fields=["messages", "updated_at"])
+
+
+def add_text(entry: dict, text: str) -> dict:
+    entry["text"] += text
+    return {"type": "text", "text": text}
+
+
+def separate_rounds(entry: dict) -> Iterator[dict]:
+    if entry["text"] and not entry["text"].endswith("\n"):
+        yield add_text(entry, "\n\n")
+
+
+def add_card(entry: dict, card: dict) -> dict:
+    entry["cards"].append(card)
+    return {"type": "card", "card": card}
+
+
+# ---------------------------------------------------------------- Claude
 
 
 def _block_dict(block: Any) -> dict:
@@ -72,21 +161,13 @@ def _block_dict(block: Any) -> dict:
     return block.to_dict(mode="json", exclude_none=True)
 
 
-def run_turn(conversation: Conversation, user_text: str, client: anthropic.Anthropic | None = None) -> Iterator[dict]:
-    """Answer one user message, yielding UI events. Persists history as it goes."""
-    cfg = _config()
-    client = client or get_client()
+def _claude_rounds(
+    conversation: Conversation, user_text: str, client: anthropic.Anthropic, entry: dict
+) -> Iterator[dict]:
+    cfg = settings.PACKWISE_ASSISTANT
     messages: list[dict] = list(conversation.messages)
     messages.append({"role": "user", "content": [{"type": "text", "text": user_text}]})
-    transcript_entry: dict[str, Any] = {"role": "assistant", "text": "", "cards": []}
-
-    def persist() -> None:
-        # Called only when `messages` ends with a user turn or a finished assistant turn, so the
-        # stored history is always a valid continuation point.
-        conversation.messages = messages
-        conversation.save(update_fields=["messages", "updated_at"])
-
-    persist()
+    persist(conversation, messages)
     try:
         for _round in range(cfg["MAX_TOOL_ROUNDS"]):
             response = None
@@ -106,32 +187,29 @@ def run_turn(conversation: Conversation, user_text: str, client: anthropic.Anthr
                     ) as stream:
                         for event in stream:
                             if event.type == "text":
-                                transcript_entry["text"] += event.text
-                                yield {"type": "text", "text": event.text}
+                                yield add_text(entry, event.text)
                             elif event.type == "content_block_start" and event.content_block.type == "tool_use":
                                 yield {"type": "status", "text": TOOL_LABELS.get(event.content_block.name, "Working…")}
                         response = stream.get_final_message()
                     break
                 except ValueError:
                     # Unparseable tool-input JSON (eager input streaming). Typed API errors are not
-                    # ValueError and propagate to the handler below.
+                    # ValueError and propagate to the handlers below.
                     if attempt == 2:
                         raise
             if response is None:  # unreachable: the retry loop either sets it or re-raises
                 raise ValueError("no response")
-            _log_usage(conversation, response)
+            _log_claude_usage(conversation, response)
 
             messages.append({"role": "assistant", "content": [_block_dict(b) for b in response.content]})
             tool_uses = [b for b in response.content if b.type == "tool_use"]
 
             if response.stop_reason == "refusal":
-                if not transcript_entry["text"]:
-                    message = "Sorry, I can't help with that request."
-                    transcript_entry["text"] = message
-                    yield {"type": "text", "text": message}
+                if not entry["text"]:
+                    yield add_text(entry, "Sorry, I can't help with that request.")
                 break
             if response.stop_reason == "pause_turn":
-                persist()
+                persist(conversation, messages)
                 continue
             if not tool_uses:
                 break  # end_turn: the answer is complete
@@ -153,14 +231,11 @@ def run_turn(conversation: Conversation, user_text: str, client: anthropic.Anthr
                     }
                 )
                 if outcome.card:
-                    transcript_entry["cards"].append(outcome.card)
-                    yield {"type": "card", "card": outcome.card}
+                    yield add_card(entry, outcome.card)
             # All results of one assistant turn go back in a single user message.
             messages.append({"role": "user", "content": results})
-            persist()
-            if transcript_entry["text"] and not transcript_entry["text"].endswith("\n"):
-                transcript_entry["text"] += "\n\n"
-                yield {"type": "text", "text": "\n\n"}
+            persist(conversation, messages)
+            yield from separate_rounds(entry)
         else:
             yield {"type": "error", "message": "That took too many steps. Try splitting the question."}
     except anthropic.AuthenticationError:
@@ -177,31 +252,24 @@ def run_turn(conversation: Conversation, user_text: str, client: anthropic.Anthr
         logger.exception("assistant_invalid_tool_json")
         yield {"type": "error", "message": "Something went wrong while preparing an action. Please try again."}
     finally:
-        # A turn that ended right after an assistant tool_use (an error mid-round) must not leave an
+        # A turn that ended right after a tool_use (an error mid-round) must not leave an
         # unanswered tool call behind, or the next request would be rejected.
         if messages and messages[-1]["role"] == "assistant" and _has_tool_use(messages[-1]):
             messages.pop()
-        persist()
-        conversation.transcript = [
-            *conversation.transcript,
-            {"role": "user", "text": user_text, "cards": []},
-            transcript_entry,
-        ]
-        conversation.turns += 1
-        conversation.busy_since = None
-        conversation.save(update_fields=["transcript", "turns", "busy_since", "updated_at"])
+        persist(conversation, messages)
 
 
 def _has_tool_use(message: dict) -> bool:
     return any(isinstance(b, dict) and b.get("type") == "tool_use" for b in message.get("content", []))
 
 
-def _log_usage(conversation: Conversation, response: Any) -> None:
+def _log_claude_usage(conversation: Conversation, response: Any) -> None:
     usage = response.usage
     logger.info(
         "assistant_model_call",
         extra={
             "conversation": str(conversation.pk),
+            "provider": "claude",
             "model": response.model,
             "stop_reason": response.stop_reason,
             "input_tokens": usage.input_tokens,

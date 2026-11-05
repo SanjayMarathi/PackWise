@@ -76,19 +76,24 @@ export function mountAssistant(root) {
   const textarea = h("textarea", { rows: 1, placeholder: "Ask about boxes, orders or products…", "aria-label": "Message the assistant", maxlength: 2000 });
   const sendButton = h("button", { class: "btn btn-primary", type: "submit", "aria-label": "Send", "data-testid": "chat-send" }, icon("send", 18));
   const form = h("form", { class: "chat-input" }, textarea, sendButton);
-  const subtitle = h("div", { class: "subtitle" }, "Uses the live 3D packing engine");
+  const subtitle = h("div", { class: "subtitle" }, "connecting…");
+  const live = h("span", { class: "live off" }, "Offline");
+  const maximize = h("button", { class: "btn btn-ghost btn-sm maximize-btn", type: "button", "aria-label": "Maximize console", "aria-pressed": "false" }, icon("expand", 15));
   const newChat = h("button", { class: "btn btn-ghost btn-sm", type: "button", title: "Start a new chat" }, icon("refresh", 14), "New");
   const close = h("button", { class: "btn btn-ghost btn-sm", type: "button", "aria-label": "Close assistant" }, icon("close", 16));
+  const handles = ["corner", "left", "top"].map((edge) => h("span", { class: `resize-handle ${edge}`, "data-edge": edge, "aria-hidden": "true" }));
   const panel = h(
     "section",
     { class: "assistant-panel", id: "assistant-panel", role: "dialog", "aria-label": "PackWise assistant", hidden: true, "data-testid": "assistant-panel" },
+    handles,
     h(
       "div",
       { class: "chat-head" },
-      icon("leaf", 90, "head-leaf"),
-      h("span", { class: "avatar" }, icon("sparkle", 20)),
-      h("div", null, h("div", { class: "title" }, "Packing assistant"), subtitle),
+      h("span", { class: "dots", "aria-hidden": "true" }, h("i"), h("i"), h("i")),
+      h("div", null, h("div", { class: "title" }, "PackWise assistant"), subtitle),
       h("span", { class: "spacer" }),
+      live,
+      maximize,
       newChat,
       close,
     ),
@@ -97,6 +102,60 @@ export function mountAssistant(root) {
     h("div", { class: "chat-foot" }, "AI can make mistakes. Box choices and fits come from the packing engine."),
   );
   root.append(fab, panel);
+
+  // ---- resizable console: drag the top-left corner, left edge or top edge; size is remembered
+  const SIZE_KEY = "packwise.assistant.size";
+  const clampSize = (width, height) => [
+    Math.round(Math.min(Math.max(width, 340), window.innerWidth - 48)),
+    Math.round(Math.min(Math.max(height, 380), window.innerHeight - 100)),
+  ];
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(SIZE_KEY) || "null");
+    if (saved && saved.width && saved.height) {
+      const [width, height] = clampSize(saved.width, saved.height);
+      Object.assign(panel.style, { width: `${width}px`, height: `${height}px` });
+    }
+  } catch {
+    // Storage unavailable or bad data: keep the default size.
+  }
+  for (const handle of handles) {
+    handle.addEventListener("pointerdown", (start) => {
+      if (panel.classList.contains("maximized")) return;
+      start.preventDefault();
+      handle.setPointerCapture(start.pointerId);
+      const edge = handle.dataset.edge;
+      const rect = panel.getBoundingClientRect();
+      panel.classList.add("resizing");
+      const move = (event) => {
+        const width = edge === "top" ? rect.width : rect.width + (start.clientX - event.clientX);
+        const height = edge === "left" ? rect.height : rect.height + (start.clientY - event.clientY);
+        const [w, hgt] = clampSize(width, height);
+        Object.assign(panel.style, { width: `${w}px`, height: `${hgt}px` });
+      };
+      const stop = () => {
+        panel.classList.remove("resizing");
+        handle.removeEventListener("pointermove", move);
+        handle.removeEventListener("pointerup", stop);
+        handle.removeEventListener("pointercancel", stop);
+        try {
+          const r = panel.getBoundingClientRect();
+          window.localStorage.setItem(SIZE_KEY, JSON.stringify({ width: r.width, height: r.height }));
+        } catch {
+          // Size just isn't remembered.
+        }
+      };
+      handle.addEventListener("pointermove", move);
+      handle.addEventListener("pointerup", stop);
+      handle.addEventListener("pointercancel", stop);
+    });
+  }
+  maximize.addEventListener("click", () => {
+    const on = panel.classList.toggle("maximized");
+    maximize.setAttribute("aria-pressed", String(on));
+    maximize.setAttribute("aria-label", on ? "Restore console size" : "Maximize console");
+    maximize.replaceChildren(icon(on ? "collapse" : "expand", 15));
+    scrollDown();
+  });
 
   const scrollDown = () => {
     log.scrollTop = log.scrollHeight;
@@ -138,14 +197,16 @@ export function mountAssistant(root) {
 
   function showOffline() {
     form.hidden = true;
-    subtitle.textContent = "Not configured";
+    subtitle.textContent = "not configured";
+    live.className = "live off";
+    live.textContent = "Offline";
     log.replaceChildren(
       h(
         "div",
         { class: "chat-offline", "data-testid": "chat-offline" },
         icon("sparkle", 32),
         h("strong", null, "The AI assistant is switched off on this server."),
-        h("span", null, "An administrator can turn it on by setting the ", h("code", null, "ANTHROPIC_API_KEY"), " secret."),
+        h("span", null, "An administrator can turn it on by setting the ", h("code", null, "GEMINI_API_KEY"), " (free tier) or ", h("code", null, "ANTHROPIC_API_KEY"), " secret."),
         h("span", { class: "muted" }, "Everything else in PackWise works without it."),
       ),
     );
@@ -162,7 +223,9 @@ export function mountAssistant(root) {
       state.enabled = false;
     }
     if (!state.enabled) return showOffline();
-    subtitle.textContent = "Claude · uses the live 3D packing engine";
+    subtitle.textContent = `${state.model} · live packing engine`;
+    live.className = "live";
+    live.textContent = "Live";
     if (!state.conversationId) return showWelcome();
     try {
       const conversation = await api(`/api/assistant/conversations/${state.conversationId}/`);

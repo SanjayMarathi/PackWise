@@ -38,16 +38,44 @@ def events_of(response):
 
 
 def test_status_reports_configuration(api_client, monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
-    assert api_client.get("/api/assistant/status/").json() == {"enabled": False, "model": "claude-opus-5-5"}
+    assert api_client.get("/api/assistant/status/").json() == {"enabled": False, "provider": None, "model": None}
     monkeypatch.setenv("ANTHROPIC_API_KEY", "x")
-    assert api_client.get("/api/assistant/status/").json()["enabled"] is True
+    assert api_client.get("/api/assistant/status/").json() == {
+        "enabled": True,
+        "provider": "claude",
+        "model": "claude-opus-5-5",
+    }
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    assert api_client.get("/api/assistant/status/").json() == {
+        "enabled": True,
+        "provider": "gemini",
+        "model": "gemini-3.6-flash",
+    }
 
 
-def test_chat_is_unavailable_without_a_key(api_client, monkeypatch):
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("ANTHROPIC_AUTH_TOKEN", raising=False)
+def test_chat_through_gemini(api_client, catalog, monkeypatch):
+    from .fakes_gemini import ScriptedGemini, call, turn
+    from .fakes_gemini import text as gemini_text
+
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    fake = ScriptedGemini(
+        turn(call("recommend_box", {"items": [{"sku": "MOUSE", "quantity": 1}]})), turn(gemini_text("Small box."))
+    )
+    monkeypatch.setattr(agent, "get_gemini_client", lambda: fake.client)
+    events = events_of(post_chat(api_client, message="Pack a mouse"))
+    assert [e["type"] for e in events] == ["conversation", "status", "card", "text", "done"]
+    assert Conversation.objects.get(pk=events[0]["id"]).provider == "gemini"
+
+
+def test_conversation_stays_on_its_provider(api_client, monkeypatch):
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    conversation = Conversation.objects.create(provider="claude", turns=1)
+    response = post_chat(api_client, message="hi", conversation_id=str(conversation.pk))
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "conversation_provider_changed"
+
+
+def test_chat_is_unavailable_without_a_key(api_client):
     response = post_chat(api_client, message="hi")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "assistant_unavailable"

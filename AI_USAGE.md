@@ -11,7 +11,7 @@ This project was built with heavy AI assistance. This file records what the AI d
 | Tool | Used for |
 |---|---|
 | **Claude Code** (Anthropic), VS Code extension, model **Claude Opus 5.5** | Architecture proposal, all source code, tests, Docker/CI configuration, documentation drafts, running commands (tests, Docker, linting) in the local terminal |
-| **Claude API** (`claude-opus-5-5`, runtime) | Not a development tool. The app's own AI assistant calls Claude at runtime (see README, "The AI assistant") |
+| **Gemini API** (`gemini-3.6-flash`) or **Claude API** (`claude-opus-5-5`), at runtime | Not development tools. The app's own AI assistant calls one of them at runtime (see README, "The AI assistant") |
 
 ✍️ Author: _list any other tools used (e.g. for writing the prompt, ChatGPT/Copilot), or state "none"._
 
@@ -33,6 +33,17 @@ This project was built with heavy AI assistance. This file records what the AI d
    * the kraft-and-ink theme;
    * the `assistant` app (Claude with tool use over the real services, streamed to a chat panel);
    * tests using the real SDK over a scripted transport.
+5. **Free API key question.** I asked whether there are free API keys, then asked about the Gemini API. The AI looked up current offers, with sources:
+   * Anthropic has no ongoing free tier;
+   * Hugging Face PRO includes $2 a month of inference credit;
+   * Gemini has a free tier through Google AI Studio.
+
+   It then added Gemini as a second provider. I created a Gemini key and added it to the Space.
+6. **Monochrome redesign request.** I shared a third reference screenshot (a modern landing page with faded window cards in the background) and asked for:
+   * a strictly black-and-white / white-and-black theme ("not coffee coloured");
+   * box pictures in the background instead of code;
+   * a resizable assistant console;
+   * a light/dark toggle.
    ✍️ Author: _add any later follow-up messages from the transcript._
 
 The exact wording of every prompt is in the exported transcript.
@@ -105,6 +116,13 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 31 | Chat text renderer only made a list when a whole paragraph was bullets | Browser test: "It fits:\n- a\n- b" rendered as plain text, a very common model format | Consecutive bullet lines become a list wherever they appear |
 | 32 | Escape handler on the chat panel only | Browser test: offline mode has no input, so focus sat on `<body>` and Escape did nothing | Handler on the document; the close button gets focus when there's no input |
 | 33 | Docs screenshot captured mid-scroll | Screenshot review: the recommended-box banner was cut off | Scroll to the top before capturing |
+| 34 | Assistant was Claude-only, which is paid | I asked for a free option | Gemini provider (`google-genai`, `gemini-3.6-flash`): same tools and events, thought signatures replayed verbatim, auto provider selection, each conversation pinned to its provider |
+| 35 | The kraft/coffee theme | I asked for strict black and white, a backdrop like my reference with boxes, and a resizable console | Monochrome redesign with a light/dark toggle, slab-serif display type, faded "window" backdrop of boxes, and a resizable and maximizable console |
+| 36 | (Risk) Gemini's docs pages had moved to a new "Interactions API" and no longer documented `generateContent` function calling | Instead of guessing the SDK, the AI inspected the installed `google-genai` 2.34 and prototyped a streamed function call over a mock transport | Code uses only verified fields (`parameters_json_schema`, `FunctionResponse.id`, `thought_signature`) |
+| 37 | Downloaded font licence saved as `OFL…` | Reading the file: Roboto Slab is **Apache 2.0** | Renamed `LICENSE-roboto-slab-Apache-2.0.txt`; README corrected |
+| 38 | 3D axis markers still red/green/blue after the redesign | Self-review against "black and white" | Monochrome lines (the width axis dashed) |
+| 39 | Backdrop "3D packer" card sat behind the page title | Screenshot review | Moved beside the product list |
+| 40 | New browser tests were flaky or wrong | Runs failed intermittently: the console was measured mid-animation; the test assumed it could grow taller in a 720 px viewport; the theme colour was read mid-transition; `expect` kept its 5 s default | Wait for animations and the final colour, a viewport-aware resize test, a 15 s `expect` timeout; then repeated runs were green |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._
 

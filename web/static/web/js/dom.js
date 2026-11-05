@@ -40,10 +40,12 @@ const ICONS = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
   refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
   package: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10M7.5 4.5l9 5"/></svg>',
-  leaf: '<svg viewBox="0 0 120 160" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M60 158C58 110 62 62 78 6"/><path d="M62 128c-20-4-34-18-38-34 18 2 32 14 38 34z"/><path d="M63 128c18-6 30-20 32-36-16 4-28 16-32 36z"/><path d="M64 92c-18-6-30-20-32-36 16 4 28 16 32 36z"/><path d="M66 90c16-8 26-22 26-38-14 6-24 18-26 38z"/><path d="M70 56c-14-6-22-18-22-32 12 4 20 14 22 32z"/><path d="M72 54c12-8 18-20 16-32-10 6-16 16-16 32z"/></svg>',
   sparkle: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 2.5l1.9 5.4 5.6 1.6-5.6 1.7L11 16.6 9.1 11.2 3.5 9.5l5.6-1.6z"/><path d="M18.5 14l.9 2.5 2.6.8-2.6.9-.9 2.5-.9-2.5-2.6-.9 2.6-.8z"/></svg>',
   send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
+  expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>',
+  collapse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>',
 };
 
 export function icon(name, size = 16, className = null) {
@@ -143,11 +145,19 @@ export async function withBusy(button, busyLabel, task) {
   }
 }
 
+/** ``title`` is a string, or ``[eyebrow, title]`` for a small spaced-out label above it. */
 export function pageHead(title, subtitle, ...actions) {
+  const [eyebrow, heading] = Array.isArray(title) ? title : [null, title];
   return h(
     "div",
     { class: "page-head" },
-    h("div", null, h("h1", null, title), subtitle ? h("p", null, subtitle) : null),
+    h(
+      "div",
+      null,
+      eyebrow ? h("span", { class: "eyebrow-label" }, eyebrow) : null,
+      h("h1", null, heading),
+      subtitle ? h("p", null, subtitle) : null,
+    ),
     actions.length ? h("div", { class: "toolbar" }, actions) : null,
   );
 }

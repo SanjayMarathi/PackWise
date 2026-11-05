@@ -28,7 +28,12 @@ export async function renderOrders(root, ctx) {
     load();
   });
   root.append(
-    pageHead("Orders", "Every order placed through PackWise, newest first. Open one to see its packing plan or recompute it.", filter, h("a", { class: "btn btn-primary", href: "#/pack" }, icon("plus", 14), "New order")),
+    pageHead(
+      ["Order history", "Orders"],
+      "Every order placed through PackWise, newest first. Open one to see its packing plan or recompute it.",
+      filter,
+      h("a", { class: "btn btn-primary", href: "#/pack" }, icon("plus", 14), "New order"),
+    ),
     body,
   );
 
@@ -105,7 +110,7 @@ async function renderOrderDetail(root, { id, strategies, defaultStrategy }) {
   }
 
   head.replaceChildren(
-    pageHead(order.order_number, `Created ${fmt.date(order.created_at)} · ${order.total_units} units · ${fmt.kg(order.total_weight)}`, statusBadge(order.status)),
+    pageHead(["Order", order.order_number], `Created ${fmt.date(order.created_at)} · ${order.total_units} units · ${fmt.kg(order.total_weight)}`, statusBadge(order.status)),
   );
   itemsSlot.replaceChildren(
     h(
