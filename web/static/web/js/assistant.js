@@ -89,7 +89,7 @@ export function mountAssistant(root) {
     h(
       "div",
       { class: "chat-head" },
-      h("span", { class: "avatar", "aria-hidden": "true" }, icon("sparkle", 18)),
+      h("span", { class: "dots", "aria-hidden": "true" }, h("i"), h("i"), h("i")),
       h("div", { class: "head-text" }, h("div", { class: "title" }, "Assistant"), subtitle),
       live,
       maximize,
