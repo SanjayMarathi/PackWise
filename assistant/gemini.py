@@ -163,7 +163,13 @@ def run_rounds(conversation: Conversation, user_text: str, client: genai.Client,
         yield {"type": "error", "message": message}
     except errors.ServerError as exc:
         logger.error("assistant_gemini_server_error", extra={"status": exc.code})
-        yield {"type": "error", "message": "The AI service is having trouble. Please try again."}
+        if exc.code == 503:  # still overloaded after the automatic retries (common on the free tier)
+            message = (
+                "Gemini is overloaded right now (this demo uses its free tier). Please try again in a few seconds."
+            )
+        else:
+            message = "The AI service is having trouble. Please try again."
+        yield {"type": "error", "message": message}
     except httpx.HTTPError:
         yield {"type": "error", "message": "Could not reach the AI service. Please try again."}
     finally:

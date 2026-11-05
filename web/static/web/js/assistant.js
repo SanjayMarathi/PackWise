@@ -79,7 +79,7 @@ export function mountAssistant(root) {
   const subtitle = h("div", { class: "subtitle" }, "connecting…");
   const live = h("span", { class: "live off" }, "Offline");
   const maximize = h("button", { class: "btn btn-ghost btn-sm maximize-btn", type: "button", "aria-label": "Maximize console", "aria-pressed": "false" }, icon("expand", 15));
-  const newChat = h("button", { class: "btn btn-ghost btn-sm", type: "button", title: "Start a new chat" }, icon("refresh", 14), "New");
+  const newChat = h("button", { class: "btn btn-ghost btn-sm", type: "button", title: "Start a new chat", "aria-label": "Start a new chat" }, icon("refresh", 15));
   const close = h("button", { class: "btn btn-ghost btn-sm", type: "button", "aria-label": "Close assistant" }, icon("close", 16));
   const handles = ["corner", "left", "top"].map((edge) => h("span", { class: `resize-handle ${edge}`, "data-edge": edge, "aria-hidden": "true" }));
   const panel = h(
@@ -90,8 +90,7 @@ export function mountAssistant(root) {
       "div",
       { class: "chat-head" },
       h("span", { class: "dots", "aria-hidden": "true" }, h("i"), h("i"), h("i")),
-      h("div", null, h("div", { class: "title" }, "PackWise assistant"), subtitle),
-      h("span", { class: "spacer" }),
+      h("div", { class: "head-text" }, h("div", { class: "title" }, "Assistant"), subtitle),
       live,
       maximize,
       newChat,

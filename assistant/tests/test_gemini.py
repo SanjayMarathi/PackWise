@@ -127,7 +127,13 @@ def test_call_cut_off_by_token_limit_is_never_executed(catalog):
 
 @pytest.mark.parametrize(
     ("status", "fragment"),
-    [(429, "free usage limit"), (403, "API key rejected"), (404, "model is not available"), (500, "having trouble")],
+    [
+        (429, "free usage limit"),
+        (403, "API key rejected"),
+        (404, "model is not available"),
+        (500, "having trouble"),
+        (503, "overloaded right now"),
+    ],
 )
 def test_api_errors_end_the_turn_cleanly(catalog, status, fragment):
     conversation = Conversation.objects.create()

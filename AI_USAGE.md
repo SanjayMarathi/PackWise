@@ -123,6 +123,7 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 38 | 3D axis markers still red/green/blue after the redesign | Self-review against "black and white" | Monochrome lines (the width axis dashed) |
 | 39 | Backdrop "3D packer" card sat behind the page title | Screenshot review | Moved beside the product list |
 | 41 | Gemini client made no retries | **Found by the real-API check on the live site:** one free-tier `503 UNAVAILABLE` mid-conversation ended the chat with an error (confirmed in the Space's runtime log) | SDK retries with backoff for 408/5xx (up to 4 attempts, streamed calls included); 429 is deliberately not retried; regression tests for both |
+| 42 | Console header wrapped ("PACKWISE / ASSISTANT", model name on three lines), and a 503 still failing after retries said only "having trouble" | Screenshot of the real live chat; Space log showed a sustained free-tier 503 | Single-line title and subtitle with ellipsis, icon-only "new chat" button with an accessible label; a specific "Gemini is overloaded (free tier)" message |
 | 40 | New browser tests were flaky or wrong | Runs failed intermittently: the console was measured mid-animation; the test assumed it could grow taller in a 720 px viewport; the theme colour was read mid-transition; `expect` kept its 5 s default | Wait for animations and the final colour, a viewport-aware resize test, a 15 s `expect` timeout; then repeated runs were green |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._

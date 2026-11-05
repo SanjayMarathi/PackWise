@@ -454,8 +454,12 @@ dialog .dialog-foot { display: flex; justify-content: flex-end; gap: 8px; paddin
 .chat-head .dots { display: flex; gap: 6px; margin-right: 4px; }
 .chat-head .dots i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--border-strong); }
 .chat-head .dots i:first-child { background: var(--text); border-color: var(--text); }
-.chat-head .title { font-family: var(--display); font-weight: 750; font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; line-height: 1.1; }
+/* One line each, truncated when the console is narrow; the buttons never wrap. */
+.chat-head .head-text { flex: 1; min-width: 0; }
+.chat-head .title, .chat-head .subtitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-head .title { font-family: var(--display); font-weight: 750; font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; line-height: 1.2; }
 .chat-head .subtitle { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.chat-head .live, .chat-head .btn { flex: none; }
 .chat-head .spacer { flex: 1; }
 .chat-head .live { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border: 1px solid var(--border-strong); border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-2); }
 .chat-head .live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text); }

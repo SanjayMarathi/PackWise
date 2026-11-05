@@ -6,7 +6,6 @@ tool execution, database writes and UI rendering.
 """
 
 import os
-import re
 from pathlib import Path
 
 import pytest
@@ -140,7 +139,7 @@ def test_assistant_shows_errors_and_can_start_over(app, scripted_assistant):
     textarea.press("Enter")
     expect(app.locator(".msg.bot.error")).to_contain_text("busy")
 
-    app.get_by_role("button", name=re.compile("New")).click()
+    app.get_by_role("button", name="Start a new chat").click()
     expect(app.locator(".chat-suggestions")).to_be_visible()
     textarea.fill("Hi")
     app.get_by_test_id("chat-send").click()

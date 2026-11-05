@@ -409,6 +409,10 @@ Utilization is compared as an exact `Fraction`, so ties are genuine ties. The de
 * Orders are never split across several boxes. If no single box fits, the result is `no_feasible_box`.
 * Recommendations use the products' **current** dimensions. Each stored recommendation keeps its own snapshot in `packing_details`.
 * The API is **unauthenticated** for ease of review. It is protected only by validation and throttling, and throttle counters are per-process (local memory).
+* The live AI assistant runs on **Gemini's free tier**:
+  * per-project rate limits apply;
+  * Google is sometimes overloaded (HTTP 503). Those are retried automatically, but a sustained overload ends the turn with an "overloaded, try again in a few seconds" message;
+  * the packing features never depend on it.
 
 ## 7. Technology stack
 
