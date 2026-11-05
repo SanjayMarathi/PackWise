@@ -8,7 +8,7 @@ Real, unedited terminal output. It was captured by redirecting the commands belo
 | Browser end-to-end tests (Playwright, Chrome) | **11 passed**, 0 failed |
 | Branch coverage | **97.9%** overall (packing engine modules 99.0–100.0%) |
 
-**GitHub Actions:** _link added after the CI run_
+**GitHub Actions:** [Tests run 42079574260](https://github.com/SanjayMarathi/PackWise/actions/runs/42079574260): 688 passed on Python 3.12 and 3.14, 11 browser end-to-end tests passed, deployment checklist passed
 
 To reproduce:
 
