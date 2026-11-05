@@ -5,9 +5,11 @@
 import { fmt, h, icon, strategyLabel, strategySelect, withBusy } from "../dom.js";
 import { AXIS_COLORS, PackingViewer } from "../viewer.js";
 
+// Packaging tones that stay distinguishable from each other and from the kraft box walls:
+// navy, blush, caramel, sage, terracotta, sand, dusty blue, olive, plum, teal, mustard, umber.
 export const PALETTE = [
-  "#6366f1", "#06b6d4", "#22c55e", "#f59e0b", "#ec4899", "#8b5cf6",
-  "#14b8a6", "#ef4444", "#3b82f6", "#eab308", "#84cc16", "#f97316",
+  "#2b3a62", "#e3a593", "#cf8a47", "#7d8f5c", "#b4593a", "#dcc69c",
+  "#6f87ab", "#8d8b4b", "#9a6176", "#4f817d", "#d6a63e", "#6b5a4c",
 ];
 
 /** One stable colour per product across the recommendation and its alternatives. */
@@ -147,6 +149,7 @@ function hero(payload, { strategies, onRerun }) {
   return h(
     "section",
     { class: `hero${rec ? "" : " fail"}` },
+    rec ? icon("leaf", 150, "hero-leaf") : null,
     h("div", { class: "stack", style: { gap: "8px" } }, left, h("div", { class: "row muted", style: { fontSize: "13px" } }, meta.map((m, i) => [i ? " · " : "", m])), rerun),
     rec ? h("div", { class: "price num" }, fmt.inr(rec.cost), h("small", null, "per box")) : null,
   );

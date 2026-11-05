@@ -20,7 +20,7 @@ WHITENOISE_USE_FINDERS = True
 # Keep throttling active (so its wiring is exercised) but out of the way of normal tests.
 REST_FRAMEWORK = {
     **REST_FRAMEWORK,
-    "DEFAULT_THROTTLE_RATES": {"anon": "100000/minute", "recommend": "100000/minute"},
+    "DEFAULT_THROTTLE_RATES": {"anon": "100000/minute", "recommend": "100000/minute", "assistant": "100000/minute"},
 }
 
 LOGGING["loggers"]["packwise"]["level"] = "WARNING"

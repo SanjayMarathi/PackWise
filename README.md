@@ -32,6 +32,7 @@ Open the live URL. There are no logins and nothing to install.
    * **every rejected box with its reason**, marked *proven impossible* or *no arrangement found*.
 2. **Orders:** the order history. Open an order to see its stored plan, or **re-run** it with another strategy.
 3. **Products** and **Boxes:** add, edit, search, (de)activate and delete. The server's validation errors appear next to the right field. Deleting something still used by an order is refused with an explanation. A deactivated box is never recommended.
+4. **Ask PackWise AI** (bottom right): an AI assistant you can talk to in plain words. See [The AI assistant](#the-ai-assistant) below.
 
 ![Pack order: recommended box and 3D packing plan](docs/screenshots/pack-order.png)
 
@@ -42,6 +43,44 @@ Open the live URL. There are no logins and nothing to install.
 ![Products management](docs/screenshots/products.png)
 
 The page is a thin client over the REST API (`web/static/web/js/`). It is plain ES modules with no build step, and the 3D view uses three.js (vendored, MIT licence). All business rules live behind the API, so everything the page does is also available and tested through `/api/`. It works on phones (responsive layout) and follows the system light/dark theme.
+
+**Look and feel:** an eco-packaging theme with cream paper, navy ink, kraft cardboard, blush, caramel and sage, plus organic shapes and botanical line-leaves. Headings use Fraunces (vendored, SIL OFL). In the 3D view the shipping box is drawn as an open kraft carton, and items are coloured in packaging tones.
+
+### The AI assistant
+
+![The packing assistant recommending a box](docs/screenshots/assistant-chat.png)
+
+*Screenshot from the automated browser test. The live server ran the real Anthropic SDK and the real tools, while the model's replies were scripted, so the test needs no API key.*
+
+The assistant is the "AI-assisted" part of box selection. Staff can type requests such as:
+
+* "Pack 2 laptops and a wireless mouse"
+* "Why can't a 27-inch monitor go in the Large box?"
+* "Which boxes can carry more than 20 kg?"
+* "What did order ORD-… get?"
+
+**How it works** ([`assistant/`](assistant/)):
+
+* **Model:** Claude (`claude-opus-5-5`) through the official `anthropic` Python SDK, with tool use. The model never computes fits or prices itself. It calls five tools, which are thin adapters over the existing services:
+
+  | Tool | What it does |
+  |---|---|
+  | `list_products` | Search the catalogue (turns names into SKUs) |
+  | `list_boxes` | Box sizes, limits, costs, stock |
+  | `recommend_box` | Creates an order and runs the 3D packing engine, exactly like the Pack order page |
+  | `check_box_fit` | Test-packs items in one box without creating an order ("why not box X?") |
+  | `get_order` | An order's items and stored recommendation |
+
+  Every number in an answer therefore comes from the engine and the database. Tool inputs are validated before anything runs, and invalid input goes back to the model as an error result it can recover from.
+* **Streaming:** the reply streams to the browser as NDJSON events: tool progress ("Packing the order in 3D…"), answer text, and result cards with an **Open 3D plan** button.
+* **Conversation history:** stored server-side, **append-only**, and replayed verbatim under a frozen system prompt and tool list. Claude binds its thinking blocks to the exact conversation prefix, so editing history would break them. `drop_block` is set so an unexpected mismatch degrades instead of failing. A reload restores the chat from a stored transcript.
+* **Refusal fallbacks:** server-side refusal fallbacks (`fallbacks: "default"`) are enabled, so a safety-classifier decline is retried on another model instead of failing.
+* **Guardrails for a public demo that calls a paid API:**
+  * its own throttle (`THROTTLE_ASSISTANT_RATE`, default 10/min);
+  * at most 2,000 characters per message, 8 model calls per answer and 30 messages per conversation;
+  * protection against two simultaneous requests on one conversation;
+  * typed handling of API errors (bad key, rate limit, outage) with friendly messages.
+* **Configuration:** the assistant turns on when `ANTHROPIC_API_KEY` is set. Without it, the panel says so and everything else works.
 
 ---
 
@@ -91,7 +130,8 @@ Among usable boxes, the business wants the **cheapest**. Comparing total volumes
 * **Concurrency-safe persistence.** Results are written under `SELECT … FOR UPDATE`, backed by unique and partial-unique constraints.
 * **Production hygiene.** Requests are strictly validated (unknown and read-only fields are rejected). Errors share one envelope, internals never leak, and logs are JSON. Throttling is on, security headers are set, a DB-aware health check is available, and the service runs as a non-root Gunicorn container.
 * **Web interface.** An order builder, an interactive 3D packing plan with a loading-sequence player, order history, and product/box management. Served by Django at `/`.
-* **Tests and CI.** About 610 Python tests with ~99% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
+* **AI assistant.** A chat panel powered by Claude with tool use over the real services: it creates orders, runs the packer, explains rejections and looks up orders, streaming its answers.
+* **Tests and CI.** About 660 Python tests with ~99% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
 
 ## 3. Architecture
 
@@ -100,6 +140,7 @@ A **modular monolith** with a strict dependency direction:
 * `inventory` depends on nothing.
 * `orders` depends on `inventory`.
 * `packing` depends on `orders` and `inventory`.
+* `assistant` (the AI chat) depends on the services of the other apps, the same ones the API uses.
 * `web` (the browser interface) depends only on the public REST API.
 
 The packing **engine** (`packing/algorithms`) imports nothing from Django. It can be unit-tested in milliseconds, and it could be reused outside the web app.
@@ -135,7 +176,8 @@ packing/
   services/    units (cm/kg <-> int), validation_service, recommendation_service
   models.py    BoxRecommendation
   views.py     POST /recommend/, GET /recommendations/
-web/           browser interface: Django view + template, ES-module client, 3D viewer (three.js)
+assistant/     AI assistant: Claude tool-use loop (agent.py), tools over the services (tools.py), NDJSON chat API
+web/           browser interface: Django view + template, ES-module client, 3D viewer (three.js), chat panel
 tests/         cross-app integration, API, web page, edge-case and configuration tests
 e2e/           browser end-to-end tests (Playwright against a live test server)
 ```
@@ -354,7 +396,8 @@ Utilization is compared as an exact `Fraction`, so ties are genuine ties. The de
 | Database | PostgreSQL 17 via psycopg 3, `dj-database-url` |
 | API docs | drf-spectacular (OpenAPI 3, Swagger UI, ReDoc) |
 | Serving | Gunicorn, WhiteNoise (static files) |
-| Web interface | Django template + vanilla ES modules (no build step), three.js r160 for the 3D view |
+| Web interface | Django template + vanilla ES modules (no build step), three.js r160 for the 3D view, Fraunces font |
+| AI assistant | Claude (`claude-opus-5-5`) via the `anthropic` Python SDK 2.5: streaming, tool use, prompt caching, refusal fallbacks |
 | Tests | pytest, pytest-django, pytest-cov, DRF `APIClient`, Playwright (browser end-to-end) |
 | Quality | ruff (lint + format), `manage.py check --deploy`, schema validation |
 | DevOps | Docker (multi-stage, non-root), Docker Compose, GitHub Actions, Docker Hub, Hugging Face Spaces (Docker SDK) |
@@ -402,6 +445,11 @@ All configuration comes from environment variables. See [`.env.example`](.env.ex
 | `PACKWISE_MAX_ITEMS_PER_ORDER` | `200` | Max units per order (bounds CPU per request) |
 | `PACKWISE_MAX_LINES_PER_ORDER` | `50` | Max distinct products per order |
 | `PACKWISE_MIN_SUPPORT_RATIO` | `0` | 0 = overhang allowed, 1 = full base support |
+| `ANTHROPIC_API_KEY` | unset (assistant off) | Turns on the AI assistant |
+| `PACKWISE_ASSISTANT_MODEL` / `_EFFORT` | `claude-opus-5-5` / `medium` | Model and reasoning effort |
+| `PACKWISE_ASSISTANT_MAX_TOOL_ROUNDS` / `_MAX_TURNS` / `_MAX_MESSAGE_CHARS` | `8` / `30` / `2000` | Per-answer, per-conversation and per-message limits |
+| `THROTTLE_ASSISTANT_RATE` | `10/minute` | Chat rate limit per client |
+| `GUNICORN_THREADS` | `4` | Threads per worker, so streamed chats don't block other requests |
 | `THROTTLE_ANON_RATE` / `THROTTLE_RECOMMEND_RATE` | `120/minute` / `30/minute` | Rate limits |
 | `RUN_MIGRATIONS` | `false` | Container runs `migrate` before Gunicorn (for platforms without a pre-deploy hook) |
 | `SEED_DEMO_DATA` | `false` | Container loads the demo catalogue after migrating |
@@ -594,6 +642,8 @@ ruff check . && ruff format --check .
 | `tests/test_edge_cases.py` | CHECK/UNIQUE/PROTECT constraints, snapshots, error-handler mapping, JSON logging |
 | `tests/test_configuration.py` | Env helpers, production settings fail fast (missing/weak secret, missing hosts), seed command |
 | `tests/test_web.py` | The page renders, the import map and assets resolve, and the page still renders after `collectstatic` with production **manifest** (hashed) storage |
+| `assistant/tests/` | The agent loop through the **real Anthropic SDK** over a scripted HTTP transport (no network): multi-round tool use, an append-only history replayed verbatim, request parameters (model, betas, fallbacks, thinking binding, effort, caching), refusal, truncated tool input never executed, API errors, round limit; every tool against real services; the chat API (NDJSON, Accept negotiation, busy/full conversations, throttling) |
+| `e2e/test_assistant.py` | In a real browser: offline state without a key; a streamed chat that creates an order and renders the card, bold and bullet text, a reload that restores the conversation, "Open 3D plan"; error display and starting over |
 | `e2e/test_ui.py` | In a real browser: pack an order (3D plan, instructions, alternatives, rejections), an order no box fits, re-run from the order page, product create/validate/edit/delete, the delete conflict for a product in use, a deactivated box no longer recommended. Fails on any JavaScript error |
 
 Real output is in [TEST_OUTPUT.md](TEST_OUTPUT.md), and CI runs on every push and pull request.
@@ -664,6 +714,7 @@ flowchart LR
 2. Create the Space (`deploy.py --create`), or let CI create it.
 3. In the Space settings → *Variables and secrets*, add the secrets:
    * `DJANGO_SECRET_KEY`: generate one with `python -c "import secrets; print(secrets.token_urlsafe(64))"`;
+   * `ANTHROPIC_API_KEY` (optional): turns on the AI assistant;
    * `DATABASE_URL`: the connection string from step 1.
 4. Deploy:
 

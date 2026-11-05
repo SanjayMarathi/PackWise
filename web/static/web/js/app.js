@@ -1,6 +1,7 @@
 // Entry point: hash router, navigation state and the API health indicator.
 
 import { api } from "./api.js";
+import { mountAssistant } from "./assistant.js";
 import { errorState } from "./dom.js";
 import { BOXES, PRODUCTS, renderCatalog } from "./views/catalog.js";
 import { renderOrders } from "./views/orders.js";
@@ -54,5 +55,6 @@ async function checkHealth() {
 
 window.addEventListener("hashchange", route);
 route();
+mountAssistant(document.getElementById("assistant-root"));
 checkHealth();
 window.setInterval(checkHealth, 60_000);

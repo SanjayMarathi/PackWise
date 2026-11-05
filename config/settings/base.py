@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     "inventory",
     "orders",
     "packing",
+    "assistant",
     "web",
 ]
 
@@ -163,6 +164,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": env("THROTTLE_ANON_RATE", "120/minute"),
         "recommend": env("THROTTLE_RECOMMEND_RATE", "30/minute"),
+        "assistant": env("THROTTLE_ASSISTANT_RATE", "10/minute"),
     },
     # Render decimals as JSON numbers, e.g. "cost": 35.0 rather than "35.00".
     "COERCE_DECIMAL_TO_STRING": False,
@@ -194,6 +196,17 @@ PACKWISE = {
     "MIN_SUPPORT_RATIO": float(env("PACKWISE_MIN_SUPPORT_RATIO", "0") or 0),
 }
 APP_VERSION = env("APP_VERSION", "1.0.0")
+
+# AI assistant (Claude). Enabled when ANTHROPIC_API_KEY is set in the environment.
+PACKWISE_ASSISTANT = {
+    "MODEL": env("PACKWISE_ASSISTANT_MODEL", "claude-opus-5-5"),
+    # Chat with simple tool sequencing; "medium" balances answer quality and latency.
+    "EFFORT": env("PACKWISE_ASSISTANT_EFFORT", "medium"),
+    "MAX_TOKENS": env_int("PACKWISE_ASSISTANT_MAX_TOKENS", 16000),
+    "MAX_TOOL_ROUNDS": env_int("PACKWISE_ASSISTANT_MAX_TOOL_ROUNDS", 8),  # model calls per answer
+    "MAX_TURNS": env_int("PACKWISE_ASSISTANT_MAX_TURNS", 30),  # user messages per conversation
+    "MAX_MESSAGE_CHARS": env_int("PACKWISE_ASSISTANT_MAX_MESSAGE_CHARS", 2000),
+}
 
 
 # ---------------------------------------------------------------- logging

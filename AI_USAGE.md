@@ -11,6 +11,7 @@ This project was built with heavy AI assistance. This file records what the AI d
 | Tool | Used for |
 |---|---|
 | **Claude Code** (Anthropic), VS Code extension, model **Claude Opus 5.5** | Architecture proposal, all source code, tests, Docker/CI configuration, documentation drafts, running commands (tests, Docker, linting) in the local terminal |
+| **Claude API** (`claude-opus-5-5`, runtime) | Not a development tool. The app's own AI assistant calls Claude at runtime (see README, "The AI assistant") |
 
 ✍️ Author: _list any other tools used (e.g. for writing the prompt, ChatGPT/Copilot), or state "none"._
 
@@ -28,6 +29,10 @@ This project was built with heavy AI assistance. This file records what the AI d
    It contained explicit instructions not to fabricate test results, deployments, transcripts or personal learnings, to work phase by phase and verify each phase, and to ask before external account actions.
 2. **Follow-up prompts / answers.** When the AI asked about the external accounts, I approved a public GitHub repository `SanjayMarathi/PackWise` and gave the Docker Hub username `sanjaymarathi`. Instead of Render, I asked for deployment on my Hugging Face account (Pro), which changed the deployment target.
 3. **Web interface request.** After the API was deployed, I pointed out that the assignment needs a working web page that demonstrates the functions, not only an API and Swagger. The AI then built the browser interface in `web/`: an order builder, a 3D packing plan with a loading-sequence player, packing instructions, alternatives, rejection reasons, order history and product/box management. It also added Playwright browser tests.
+4. **Theme and AI assistant request.** I shared two packaging reference images (kraft boxes with botanical prints; navy/blush/caramel packaging with organic shapes) and asked for that kind of theme. I also pointed out that an AI assistant chatbot was missing. The AI then built:
+   * the kraft-and-ink theme;
+   * the `assistant` app (Claude with tool use over the real services, streamed to a chat panel);
+   * tests using the real SDK over a scripted transport.
    ✍️ Author: _add any later follow-up messages from the transcript._
 
 The exact wording of every prompt is in the exported transcript.
@@ -94,6 +99,12 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 25 | E2E test used `locator(".toast")` | Test failed with Playwright strict mode: an earlier toast was still visible (the app was right) | Locator narrowed by text |
 | 26 | Gunicorn 26 control socket under `$HOME` (= read-only `/app` after #19) | `Control server error: Permission denied` in container logs | `--no-control-socket` (the platform manages the process); verified the error is gone |
 | 27 | Dockerfile `# syntax=docker/dockerfile:1.7` line | An extra registry pull with no feature in use (found when a local Docker Hub sign-in broke builds) | Removed |
+| 28 | The first UI had no AI assistant and a generic look | I asked for the packaging theme and a chatbot | Theme rewrite; `assistant` app with five tools, NDJSON streaming, append-only history, guardrails |
+| 29 | Chat client sent `Accept: application/x-ndjson`; DRF only had a JSON renderer | The **browser test** got a 406 ("Could not satisfy the request Accept header"). The API tests had passed, because the test client sends a default Accept | NDJSON renderer on the chat view; regression test with the browser's real header |
+| 30 | `assistant/tests` missing from pytest `testpaths` | Test count stayed at 613: the 46 assistant tests were not collected by the default run (or by CI) | Added; the suite is now 660 |
+| 31 | Chat text renderer only made a list when a whole paragraph was bullets | Browser test: "It fits:\n- a\n- b" rendered as plain text, a very common model format | Consecutive bullet lines become a list wherever they appear |
+| 32 | Escape handler on the chat panel only | Browser test: offline mode has no input, so focus sat on `<body>` and Escape did nothing | Handler on the document; the close button gets focus when there's no input |
+| 33 | Docs screenshot captured mid-scroll | Screenshot review: the recommended-box banner was cut off | Scroll to the top before capturing |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._
 
@@ -138,7 +149,13 @@ Everything below was **run**, not assumed. The outputs are in the transcript and
    * screenshots were inspected after each change, which is how mistakes #22–#24 were found;
    * no JavaScript errors, and no horizontal overflow at 390 px width;
    * six end-to-end tests cover the main journeys and fail on any JavaScript error.
-8. **Deployment:** the public URL https://sanjaymarathi-packwise.hf.space was checked with real requests after CI deployed it:
+8. **AI assistant without a live key:**
+   * the agent loop was tested through the **real `anthropic` SDK** with a mock HTTP transport replaying scripted server-sent-event streams;
+   * this exercises the real stream parsing, tool execution, database writes and the exact request bodies;
+   * the tests assert, among other things, that each request's history extends the previous one byte-for-byte.
+
+   A conversation with the real model on the live site needs `ANTHROPIC_API_KEY`; see the README.
+9. **Deployment:** the public URL https://sanjaymarathi-packwise.hf.space was checked with real requests after CI deployed it:
    * `/api/health/` returned database `ok` and version = the deployed commit SHA;
    * the seeded catalogue was present;
    * create order → recommend returned `BX-M-FLAT` at ₹35, the same as locally, and the stored result matched;

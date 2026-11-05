@@ -98,13 +98,23 @@ export class PackingViewer {
     this.content.add(new THREE.LineSegments(new THREE.EdgesGeometry(shellGeometry), new THREE.LineBasicMaterial({ color: edgeColor })));
     shellGeometry.dispose();
 
-    const floor = new THREE.Mesh(
-      new THREE.PlaneGeometry(L, W),
-      new THREE.MeshBasicMaterial({ color: edgeColor, transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false }),
-    );
+    // An open kraft carton: cardboard floor, plus the two walls facing away from the camera
+    // (back and left). The front and right walls are drawn as edges only, so nothing hides the items.
+    const wallColor = new THREE.Color(cssVar("--viewer-wall", "#c9a173"));
+    const panel = (width, height, opacity) =>
+      new THREE.Mesh(
+        new THREE.PlaneGeometry(width, height),
+        new THREE.MeshBasicMaterial({ color: wallColor, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false }),
+      );
+    const floor = panel(L, W, 0.42);
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = -H / 2 - 0.01;
-    this.content.add(floor);
+    const back = panel(L, H, 0.22);
+    back.position.z = -W / 2 - 0.01;
+    const left = panel(W, H, 0.16);
+    left.rotation.y = Math.PI / 2;
+    left.position.x = -L / 2 - 0.01;
+    this.content.add(floor, back, left);
 
     // Axis markers at the engine origin (back-left-bottom corner).
     const origin = new THREE.Vector3(-L / 2, -H / 2, -W / 2);

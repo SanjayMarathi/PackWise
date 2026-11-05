@@ -44,6 +44,11 @@ class ConflictError(DomainError):
     default_code = "conflict"
 
 
+class ServiceUnavailableError(DomainError):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_code = "service_unavailable"
+
+
 class UnprocessableError(DomainError):
     """The request is well-formed but the resource's state prevents processing it."""
 

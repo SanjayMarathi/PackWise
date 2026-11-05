@@ -115,9 +115,11 @@ export async function renderPack(root, { strategies, defaultStrategy }) {
         h(
           "div",
           { class: "card empty" },
-          icon("package", 96),
+          icon("package", 110),
+          icon("leaf", 160, "corner-leaf"),
           h("h2", null, "Your recommendation appears here"),
           h("p", null, "Add a few products on the left and press “Find the best box”. You will get the cheapest box that fits, an interactive 3D packing plan, step-by-step loading instructions, ranked alternatives and the reason each other box was rejected."),
+          h("p", { class: "muted" }, "Prefer to ask in plain words? Open the packing assistant at the bottom right."),
         ),
       );
       return;

@@ -6,14 +6,14 @@ requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"
-testpaths = ["packing/tests", "inventory/tests", "orders/tests", "tests"]
+testpaths = ["packing/tests", "inventory/tests", "orders/tests", "assistant/tests", "tests"]
 python_files = ["test_*.py"]
 addopts = "-ra --strict-markers"
 filterwarnings = ["error::RuntimeWarning"]
 
 [tool.coverage.run]
 branch = true
-source = ["packing", "inventory", "orders", "common", "config", "web"]
+source = ["packing", "inventory", "orders", "common", "config", "web", "assistant"]
 omit = [
     "*/migrations/*",
     "*/tests/*",
