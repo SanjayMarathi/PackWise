@@ -5,9 +5,9 @@
 import { fmt, h, icon, strategyLabel, strategySelect, withBusy } from "../dom.js";
 import { PackingViewer } from "../viewer.js";
 
-const FALLBACK_PALETTE = ["#1c1c1c", "#b9b9b9", "#5a5a5a", "#e2e2e2", "#343434", "#9a9a9a"];
+const FALLBACK_PALETTE = ["#ff6a1f", "#2f5bff", "#ffc72c", "#f23c3c", "#26262c", "#8fa8ff"];
 
-/** Monochrome item tones from the active theme (CSS ``--item-palette``), alternating dark/light. */
+/** Item colours from the active theme (CSS ``--item-palette``): the four accents, then ink and tints. */
 export function palette() {
   const raw = getComputedStyle(document.documentElement).getPropertyValue("--item-palette");
   const tones = raw.split(",").map((t) => t.trim()).filter(Boolean);

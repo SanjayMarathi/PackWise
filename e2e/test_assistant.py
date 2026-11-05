@@ -88,7 +88,9 @@ def test_assistant_packs_an_order_and_links_to_the_3d_plan(app, scripted_assista
 
 def test_console_resizes_and_maximizes(app, scripted_assistant):
     scripted_assistant()
-    settled = "document.getAnimations().length === 0"  # the open animation scales the panel briefly
+    # The open animation scales the panel briefly. Only the panel's own animations count: the "Live"
+    # pill pulses forever, so the document as a whole is never animation-free.
+    settled = "document.querySelector('[data-testid=assistant-panel]').getAnimations().length === 0"
     app.get_by_test_id("assistant-open").click()
     app.wait_for_function(settled)
     panel = app.get_by_test_id("assistant-panel")

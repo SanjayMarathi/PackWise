@@ -45,11 +45,12 @@ Open the live URL. There are no logins and nothing to install.
 The page is a thin client over the REST API (`web/static/web/js/`). It is plain ES modules with no build step, and the 3D view uses three.js (vendored, MIT licence). All business rules live behind the API, so everything the page does is also available and tested through `/api/`. It works on phones (responsive layout) and follows the system light/dark theme.
 
 **Look and feel:**
-* **Colours:** strictly monochrome. Light mode is black on white, dark mode is white on black. A toggle in the top bar remembers your choice; without one, the page follows the system setting.
-* **Type:** uppercase slab-serif headings (Roboto Slab, vendored, Apache 2.0) with wide letter-spacing and small spaced-out labels above them.
-* **Shapes:** hairline cards with circular icon badges.
-* **Backdrop:** faded, tilted "window" cards showing a box catalogue, an isometric 3D packer, a packing slip and a dimensioned carton.
-* **3D view:** items are drawn in alternating dark and light tones with crisp outlines, so neighbouring items stay distinct without colour.
+* **Colours:** a black-and-white base (light mode is black on white, dark mode is white on black) with four bold accents. Orange marks actions, blue marks selection and the recommended box, yellow marks highlights and the active tab, and red marks rejections and errors. A toggle in the top bar remembers your choice; without one, the page follows the system setting.
+* **Type:** uppercase slab-serif headings (Roboto Slab, vendored, Apache 2.0) with wide letter-spacing and small spaced-out labels above them, each led by a four-colour stripe.
+* **Shapes:** a Bauhaus-inspired style with thick ink outlines, hard offset shadows, colour-coded card headers and circular icon badges.
+* **Backdrop:** a dot grid with geometric shapes (an orange circle, a blue square, a yellow half-disc and a red triangle) and tilted "window" cards showing a box catalogue, an isometric 3D packer, a packing slip and a dimensioned carton.
+* **3D view:** items take the accent colours first, then ink and lighter tints, with crisp outlines so neighbouring items stay distinct.
+* **Motion:** the pulsing and bouncing indicators stop when the system asks for reduced motion.
 
 ### The AI assistant
 

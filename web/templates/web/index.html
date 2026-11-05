@@ -14,7 +14,7 @@
       } catch (e) { /* storage unavailable: follow the system */ }
     })();
   </script>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23fff' stroke='%23000' stroke-width='1.6' stroke-linejoin='round' d='M16 3 28 9.5 16 16 4 9.5z'/%3E%3Cpath fill='%23000' d='M4 9.5 16 16v13L4 22.5z'/%3E%3Cpath fill='%23333' d='M28 9.5 16 16v13l12-6.5z'/%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%230b0b0f' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath fill='%23ffc72c' d='M16 3 28 9.5 16 16 4 9.5z'/%3E%3Cpath fill='%23ff6a1f' d='M4 9.5 16 16v13L4 22.5z'/%3E%3Cpath fill='%232f5bff' d='M28 9.5 16 16v13l12-6.5z'/%3E%3C/g%3E%3Cpath stroke='%23f23c3c' stroke-width='2.6' stroke-linecap='round' d='M10 6.3 22 12.8'/%3E%3C/svg%3E">
   <link rel="preload" href="{% static 'web/vendor/fonts/roboto-slab-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
   <script type="importmap">
@@ -27,6 +27,12 @@
 <body>
   <div class="backdrop" aria-hidden="true">
     <div class="layer">
+      <span class="shape sun"></span>
+      <span class="shape square"></span>
+      <span class="shape half"></span>
+      <span class="shape tri"></span>
+      <span class="shape ring"></span>
+
       <div class="bg-window w-catalog">
         <div class="chrome"><i></i><i></i><i></i><span>box-catalogue.csv</span></div>
         <table>
@@ -44,16 +50,18 @@
         <svg viewBox="0 0 420 240" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
           <!-- container (wireframe) -->
           <path stroke-dasharray="4 4" d="M70 90 180 30 350 122 240 182Z M70 90v80l170 92 110-60v-80 M240 182v80"/>
-          <!-- packed items -->
-          <path fill="currentColor" fill-opacity=".22" d="M95 120 160 85 230 123 165 158Z"/>
-          <path fill="currentColor" fill-opacity=".38" d="M95 120v38l70 38v-38Z"/>
-          <path fill="currentColor" fill-opacity=".12" d="M165 158v38l65-35v-38Z"/>
-          <path fill="currentColor" fill-opacity=".16" d="M200 96 245 72 320 112 275 136Z"/>
-          <path fill="currentColor" fill-opacity=".34" d="M200 96v26l75 40v-26Z"/>
-          <path fill="currentColor" fill-opacity=".1" d="M275 136v26l45-24v-26Z"/>
-          <path fill="currentColor" fill-opacity=".28" d="M120 98 150 82 185 101 155 117Z"/>
-          <path fill="currentColor" fill-opacity=".45" d="M120 98v18l35 19v-18Z"/>
-          <path fill="currentColor" fill-opacity=".14" d="M155 117v18l30-16v-18Z"/>
+          <!-- packed items: top, front, side faces in the accent colours -->
+          <g stroke="#0b0b0f">
+            <path fill="#ffc72c" d="M95 120 160 85 230 123 165 158Z"/>
+            <path fill="#ff6a1f" d="M95 120v38l70 38v-38Z"/>
+            <path fill="#d9540f" d="M165 158v38l65-35v-38Z"/>
+            <path fill="#8fa8ff" d="M200 96 245 72 320 112 275 136Z"/>
+            <path fill="#2f5bff" d="M200 96v26l75 40v-26Z"/>
+            <path fill="#1f3fbf" d="M275 136v26l45-24v-26Z"/>
+            <path fill="#ff9a9a" d="M120 98 150 82 185 101 155 117Z"/>
+            <path fill="#f23c3c" d="M120 98v18l35 19v-18Z"/>
+            <path fill="#b82525" d="M155 117v18l30-16v-18Z"/>
+          </g>
         </svg>
       </div>
 
@@ -73,8 +81,8 @@
         <svg viewBox="0 0 340 230" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round">
           <path d="M80.7 70 150 30l103.9 60-69.3 40Z"/>
           <path d="M80.7 70v70l103.9 60 69.3-40V90 M184.6 130v70"/>
-          <path stroke-width="5" stroke-opacity=".35" d="M115.4 50l103.9 60v70"/>
-          <path fill="currentColor" fill-opacity=".08" d="M115.4 35 150 15l52 30-34.7 20Z M115.4 35v35l51.9 30 34.7-20V45"/>
+          <path stroke-width="6" stroke="#ff6a1f" d="M115.4 50l103.9 60v70"/>
+          <path fill="#ffc72c" d="M115.4 35 150 15l52 30-34.7 20Z M115.4 35v35l51.9 30 34.7-20V45"/>
           <path stroke-dasharray="3 4" d="M70 152l104 60 M194 212l70-40"/>
           <text x="96" y="214" fill="currentColor" stroke="none" font-size="12" font-family="monospace">40 cm</text>
           <text x="236" y="212" fill="currentColor" stroke="none" font-size="12" font-family="monospace">50 cm</text>

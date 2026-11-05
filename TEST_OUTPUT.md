@@ -8,7 +8,7 @@ Real, unedited terminal output. It was captured by redirecting the commands belo
 | Browser end-to-end tests (Playwright, Chrome) | **11 passed**, 0 failed |
 | Branch coverage | **97.9%** overall (packing engine modules 99.0–100.0%) |
 
-**GitHub Actions:** [Tests run 42072804447](https://github.com/SanjayMarathi/PackWise/actions/runs/42072804447): 688 passed on Python 3.12 and 3.14, 11 browser end-to-end tests passed, deployment checklist passed
+**GitHub Actions:** _link added after the CI run_
 
 To reproduce:
 
@@ -796,8 +796,7 @@ web\apps.py                                           5      0      0      0 100
 web\views.py                                          7      0      0      0 100.0%
 ---------------------------------------------------------------------------------------------
 TOTAL                                              1897     27    394     17  97.9%
-============================ 688 passed in 26.77s =============================
-
+============================ 688 passed in 26.85s =============================
 $ pytest e2e -v --browser-channel chrome
 ============================= test session starts =============================
 platform win32 -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0 -- E:\PackWise\.venv\Scripts\python.exe
@@ -829,5 +828,5 @@ e2e/test_assistant.py::test_assistant_is_offline_without_an_api_key[chromium]
     fixturefunc = resolve_fixture_function(fixturedef, request)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 11 passed, 1 warning in 32.79s ========================
+======================= 11 passed, 1 warning in 45.59s ========================
 ```

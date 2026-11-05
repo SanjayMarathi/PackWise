@@ -125,7 +125,7 @@ export class PackingViewer {
       axis(origin, new THREE.Vector3(0, axisLength, 0), edgeColor),
     );
 
-    // Items are monochrome tones, so a crisp outline (ink in light mode, chalk in dark) keeps them apart.
+    // Items share a few accent colours, so a crisp outline (ink in light mode, chalk in dark) keeps them apart.
     const itemEdge = new THREE.Color(cssVar("--viewer-item-edge", "#000000"));
     this.meshes = option.placements.map((placement) => {
       const d = placement.dimensions;

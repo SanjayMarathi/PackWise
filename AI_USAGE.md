@@ -44,6 +44,7 @@ This project was built with heavy AI assistance. This file records what the AI d
    * box pictures in the background instead of code;
    * a resizable assistant console;
    * a light/dark toggle.
+7. **Colour accents request.** I said the black-and-white design looked too basic and asked for a mix of orange, blue, yellow and red on top of the black and white themes, made as good-looking as possible.
    ✍️ Author: _add any later follow-up messages from the transcript._
 
 The exact wording of every prompt is in the exported transcript.
@@ -122,9 +123,12 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 37 | Downloaded font licence saved as `OFL…` | Reading the file: Roboto Slab is **Apache 2.0** | Renamed `LICENSE-roboto-slab-Apache-2.0.txt`; README corrected |
 | 38 | 3D axis markers still red/green/blue after the redesign | Self-review against "black and white" | Monochrome lines (the width axis dashed) |
 | 39 | Backdrop "3D packer" card sat behind the page title | Screenshot review | Moved beside the product list |
+| 40 | New browser tests were flaky or wrong | Runs failed intermittently: the console was measured mid-animation; the test assumed it could grow taller in a 720 px viewport; the theme colour was read mid-transition; `expect` kept its 5 s default | Wait for animations and the final colour, a viewport-aware resize test, a 15 s `expect` timeout; then repeated runs were green |
 | 41 | Gemini client made no retries | **Found by the real-API check on the live site:** one free-tier `503 UNAVAILABLE` mid-conversation ended the chat with an error (confirmed in the Space's runtime log) | SDK retries with backoff for 408/5xx (up to 4 attempts, streamed calls included); 429 is deliberately not retried; regression tests for both |
 | 42 | Console header wrapped ("PACKWISE / ASSISTANT", model name on three lines), and a 503 still failing after retries said only "having trouble" | Screenshot of the real live chat; Space log showed a sustained free-tier 503 | Single-line title and subtitle with ellipsis, icon-only "new chat" button with an accessible label; a specific "Gemini is overloaded (free tier)" message |
-| 40 | New browser tests were flaky or wrong | Runs failed intermittently: the console was measured mid-animation; the test assumed it could grow taller in a 720 px viewport; the theme colour was read mid-transition; `expect` kept its 5 s default | Wait for animations and the final colour, a viewport-aware resize test, a 15 s `expect` timeout; then repeated runs were green |
+| 43 | The monochrome theme | I said it looked too basic and asked for orange, blue, yellow and red | Bauhaus-style accent system on the same black/white bases: colour-coded card headers, ink outlines with hard offset shadows, an orange call-to-action, a blue recommendation banner, geometric backdrop shapes and coloured 3D items |
+| 44 | Dark-mode highlights (selected products, hovered rows) used a dark yellow tint | Screenshot review: on black it read as olive-brown, close to the coffee look I had rejected | A separate highlight token: pale yellow in light mode, deep blue in dark mode |
+| 45 | The console resize browser test waited until the whole page had no running animations | It failed after the redesign: the new pulsing "Live" pill never stops, so the page is never animation-free | The test waits only for the console's own open animation; a `prefers-reduced-motion` rule also stops the pulse |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._
 
