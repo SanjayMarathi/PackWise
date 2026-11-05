@@ -96,7 +96,8 @@ The assistant is the "AI-assisted" part of box selection. Staff can type request
   * its own throttle (`THROTTLE_ASSISTANT_RATE`, default 10/min);
   * at most 2,000 characters per message, 8 model calls per answer and 30 messages per conversation;
   * protection against two simultaneous requests on one conversation;
-  * typed handling of API errors (bad key, rate limit, outage) with friendly messages.
+  * typed handling of API errors (bad key, rate limit, outage) with friendly messages;
+  * automatic retries with backoff for transient server errors such as Gemini's free-tier 503s. Rate limits are not retried, so the user is told straight away.
 * **Configuration:**
   * the assistant turns on when `GEMINI_API_KEY` (free at [Google AI Studio](https://aistudio.google.com/apikey)) or `ANTHROPIC_API_KEY` is set;
   * `PACKWISE_ASSISTANT_PROVIDER` forces one of them;
@@ -153,7 +154,7 @@ Among usable boxes, the business wants the **cheapest**. Comparing total volumes
 * **Production hygiene.** Requests are strictly validated (unknown and read-only fields are rejected). Errors share one envelope, internals never leak, and logs are JSON. Throttling is on, security headers are set, a DB-aware health check is available, and the service runs as a non-root Gunicorn container.
 * **Web interface.** An order builder, an interactive 3D packing plan with a loading-sequence player, order history, and product/box management. Served by Django at `/`.
 * **AI assistant.** A resizable chat console powered by Gemini (free tier) or Claude, using tools over the real services. It creates orders, runs the packer, explains rejections and looks up orders, streaming its answers.
-* **Tests and CI.** About 685 Python tests with ~98% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
+* **Tests and CI.** About 687 Python tests with ~98% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
 
 ## 3. Architecture
 

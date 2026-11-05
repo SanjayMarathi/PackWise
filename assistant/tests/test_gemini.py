@@ -187,6 +187,34 @@ def test_provider_selection(settings, monkeypatch, configured, keys, expected):
     assert agent.assistant_enabled() is (expected is not None)
 
 
+def test_transient_server_errors_are_retried(catalog, monkeypatch):
+    """Regression: on the live site, one free-tier 503 ended the chat with an error."""
+    import httpx
+
+    from assistant import gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    scripted = ScriptedGemini(503, turn(text("Recovered after a retry.")))
+    client = gemini.get_client(http_client=httpx.Client(transport=httpx.MockTransport(scripted._handle)))
+    events = list(agent.run_turn(Conversation.objects.create(), "Hello", client=client, provider="gemini"))
+    assert of_type(events, "error") == []
+    assert "".join(e["text"] for e in of_type(events, "text")) == "Recovered after a retry."
+    assert len(scripted.requests) == 2
+
+
+def test_rate_limits_are_not_retried(catalog, monkeypatch):
+    import httpx
+
+    from assistant import gemini
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-key")
+    scripted = ScriptedGemini(429)
+    client = gemini.get_client(http_client=httpx.Client(transport=httpx.MockTransport(scripted._handle)))
+    events = list(agent.run_turn(Conversation.objects.create(), "Hello", client=client, provider="gemini"))
+    assert "free usage limit" in of_type(events, "error")[0]["message"]
+    assert len(scripted.requests) == 1
+
+
 def test_get_client_reads_the_key_from_the_environment(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "from-env")
     client = agent.get_gemini_client()

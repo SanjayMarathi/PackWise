@@ -29,9 +29,18 @@ logger = logging.getLogger("packwise.assistant")
 BLOCKED = {"SAFETY", "PROHIBITED_CONTENT", "BLOCKLIST", "SPII", "RECITATION", "IMAGE_SAFETY"}
 
 
-def get_client() -> genai.Client:
+# Free-tier Gemini returns transient 503s ("unavailable") under load: retry those with backoff.
+# 429 is deliberately excluded: on the free tier it means a quota was hit, and an immediate
+# retry won't help, so the user gets the clear "usage limit" message straight away.
+RETRY = types.HttpRetryOptions(
+    attempts=4, initial_delay=1.0, max_delay=8.0, http_status_codes=[408, 500, 502, 503, 504]
+)
+
+
+def get_client(http_client: httpx.Client | None = None) -> genai.Client:
     # Reads GEMINI_API_KEY (or GOOGLE_API_KEY) from the environment. Timeout is in milliseconds.
-    return genai.Client(http_options=types.HttpOptions(timeout=120_000))
+    # Retries also cover streamed calls: the SDK retries the initial response before streaming.
+    return genai.Client(http_options=types.HttpOptions(timeout=120_000, retry_options=RETRY, httpx_client=http_client))
 
 
 def function_declarations() -> list[types.FunctionDeclaration]:

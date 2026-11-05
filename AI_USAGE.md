@@ -122,6 +122,7 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 37 | Downloaded font licence saved as `OFL…` | Reading the file: Roboto Slab is **Apache 2.0** | Renamed `LICENSE-roboto-slab-Apache-2.0.txt`; README corrected |
 | 38 | 3D axis markers still red/green/blue after the redesign | Self-review against "black and white" | Monochrome lines (the width axis dashed) |
 | 39 | Backdrop "3D packer" card sat behind the page title | Screenshot review | Moved beside the product list |
+| 41 | Gemini client made no retries | **Found by the real-API check on the live site:** one free-tier `503 UNAVAILABLE` mid-conversation ended the chat with an error (confirmed in the Space's runtime log) | SDK retries with backoff for 408/5xx (up to 4 attempts, streamed calls included); 429 is deliberately not retried; regression tests for both |
 | 40 | New browser tests were flaky or wrong | Runs failed intermittently: the console was measured mid-animation; the test assumed it could grow taller in a 720 px viewport; the theme colour was read mid-transition; `expect` kept its 5 s default | Wait for animations and the final colour, a viewport-aware resize test, a 15 s `expect` timeout; then repeated runs were green |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._
@@ -172,7 +173,10 @@ Everything below was **run**, not assumed. The outputs are in the transcript and
    * this exercises the real stream parsing, tool execution, database writes and the exact request bodies;
    * the tests assert, among other things, that each request's history extends the previous one byte-for-byte.
 
-   A conversation with the real model on the live site needs `ANTHROPIC_API_KEY`; see the README.
+   **Real model, live site (Gemini, after I added `GEMINI_API_KEY`):**
+   * "Pack 2 laptops and a wireless mouse" made two parallel product lookups, then `recommend_box`, and created a real order. The answer was Medium Flat, ₹35, 16.86% full, matching the engine exactly.
+   * The follow-up "Why can't that order go in the Small box?" replayed the stored history, thought signatures included, and the real API accepted it. The answer, that the laptop can't fit in any orientation and so the box is proven impossible, is the engine's own reason.
+   * That check also surfaced finding #41.
 9. **Deployment:** the public URL https://sanjaymarathi-packwise.hf.space was checked with real requests after CI deployed it:
    * `/api/health/` returned database `ok` and version = the deployed commit SHA;
    * the seeded catalogue was present;
