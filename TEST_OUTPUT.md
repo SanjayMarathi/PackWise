@@ -1,14 +1,14 @@
 # Test Output
 
-Real, unedited terminal output. It was captured by redirecting the commands below to a file and embedding that file here with a script, without retyping. Run on 2026-11-05 on a Windows 11 development machine against PostgreSQL 17 (Docker).
+Real, unedited terminal output. It was captured by redirecting the commands below to a file and embedding that file here with a script, without retyping. Run on 2026-11-06 on a Windows 11 development machine against PostgreSQL 17 (Docker).
 
 | Suite | Result |
 |---|---|
 | Python tests (unit, integration, API, web page) | **688 passed**, 0 failed, 0 skipped |
-| Browser end-to-end tests (Playwright, Chrome) | **11 passed**, 0 failed |
+| Browser end-to-end tests (Playwright, Chrome) | **12 passed**, 0 failed |
 | Branch coverage | **97.9%** overall (packing engine modules 99.0–100.0%) |
 
-**GitHub Actions:** [Tests run 42079574260](https://github.com/SanjayMarathi/PackWise/actions/runs/42079574260): 688 passed on Python 3.12 and 3.14, 11 browser end-to-end tests passed, deployment checklist passed
+**GitHub Actions:** _link added after the CI run_
 
 To reproduce:
 
@@ -796,7 +796,7 @@ web\apps.py                                           5      0      0      0 100
 web\views.py                                          7      0      0      0 100.0%
 ---------------------------------------------------------------------------------------------
 TOTAL                                              1897     27    394     17  97.9%
-============================ 688 passed in 26.85s =============================
+======================= 688 passed in 63.23s (0:01:03) ========================
 $ pytest e2e -v --browser-channel chrome
 ============================= test session starts =============================
 platform win32 -- Python 3.14.6, pytest-9.2.0, pluggy-1.7.0 -- E:\PackWise\.venv\Scripts\python.exe
@@ -804,18 +804,19 @@ django: version: 5.2.19, settings: config.settings.test (from ini)
 rootdir: E:\PackWise
 configfile: pyproject.toml
 plugins: anyio-4.16.0, cov-7.1.0, django-4.14.0, playwright-0.10.0
-collecting ... collected 11 items
+collecting ... collected 12 items
 
-e2e/test_assistant.py::test_assistant_is_offline_without_an_api_key[chromium] PASSED [  9%]
-e2e/test_assistant.py::test_assistant_packs_an_order_and_links_to_the_3d_plan[chromium] PASSED [ 18%]
-e2e/test_assistant.py::test_console_resizes_and_maximizes[chromium] PASSED [ 27%]
-e2e/test_assistant.py::test_theme_toggle_switches_and_persists[chromium] PASSED [ 36%]
-e2e/test_assistant.py::test_assistant_shows_errors_and_can_start_over[chromium] PASSED [ 45%]
-e2e/test_ui.py::test_pack_an_order_shows_box_3d_plan_and_instructions[chromium] PASSED [ 54%]
-e2e/test_ui.py::test_order_that_no_box_can_hold[chromium] PASSED         [ 63%]
-e2e/test_ui.py::test_rerun_with_another_strategy_from_the_order_page[chromium] PASSED [ 72%]
-e2e/test_ui.py::test_product_create_validate_edit_delete[chromium] PASSED [ 81%]
-e2e/test_ui.py::test_product_used_in_an_order_cannot_be_deleted[chromium] PASSED [ 90%]
+e2e/test_assistant.py::test_assistant_is_offline_without_an_api_key[chromium] PASSED [  8%]
+e2e/test_assistant.py::test_assistant_packs_an_order_and_links_to_the_3d_plan[chromium] PASSED [ 16%]
+e2e/test_assistant.py::test_console_resizes_and_maximizes[chromium] PASSED [ 25%]
+e2e/test_assistant.py::test_theme_toggle_switches_and_persists[chromium] PASSED [ 33%]
+e2e/test_assistant.py::test_assistant_shows_errors_and_can_start_over[chromium] PASSED [ 41%]
+e2e/test_ui.py::test_pack_an_order_shows_box_3d_plan_and_instructions[chromium] PASSED [ 50%]
+e2e/test_ui.py::test_order_builder_stays_reachable_while_the_page_scrolls[chromium] PASSED [ 58%]
+e2e/test_ui.py::test_order_that_no_box_can_hold[chromium] PASSED         [ 66%]
+e2e/test_ui.py::test_rerun_with_another_strategy_from_the_order_page[chromium] PASSED [ 75%]
+e2e/test_ui.py::test_product_create_validate_edit_delete[chromium] PASSED [ 83%]
+e2e/test_ui.py::test_product_used_in_an_order_cannot_be_deleted[chromium] PASSED [ 91%]
 e2e/test_ui.py::test_deactivated_box_is_no_longer_recommended[chromium] PASSED [100%]
 
 ============================== warnings summary ===============================
@@ -828,5 +829,5 @@ e2e/test_assistant.py::test_assistant_is_offline_without_an_api_key[chromium]
     fixturefunc = resolve_fixture_function(fixturedef, request)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-======================= 11 passed, 1 warning in 45.59s ========================
+================== 12 passed, 1 warning in 146.30s (0:02:26) ==================
 ```

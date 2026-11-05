@@ -45,6 +45,7 @@ This project was built with heavy AI assistance. This file records what the AI d
    * a resizable assistant console;
    * a light/dark toggle.
 7. **Colour accents request.** I said the black-and-white design looked too basic and asked for a mix of orange, blue, yellow and red on top of the black and white themes, made as good-looking as possible.
+8. **Scrolling and polish request.** I reported that the Pack order page sometimes got stuck (the left side would not scroll until the right side reached its end), that the yellow marker on bold chat text looked like an old computer, and asked for a more modern design with polished colours, proper scrolling and smooth transitions.
    ✍️ Author: _add any later follow-up messages from the transcript._
 
 The exact wording of every prompt is in the exported transcript.
@@ -129,6 +130,10 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 43 | The monochrome theme | I said it looked too basic and asked for orange, blue, yellow and red | Bauhaus-style accent system on the same black/white bases: colour-coded card headers, ink outlines with hard offset shadows, an orange call-to-action, a blue recommendation banner, geometric backdrop shapes and coloured 3D items |
 | 44 | Dark-mode highlights (selected products, hovered rows) used a dark yellow tint | Screenshot review: on black it read as olive-brown, close to the coffee look I had rejected | A separate highlight token: pale yellow in light mode, deep blue in dark mode |
 | 45 | The console resize browser test waited until the whole page had no running animations | It failed after the redesign: the new pulsing "Live" pill never stops, so the page is never animation-free | The test waits only for the console's own open animation; a `prefers-reduced-motion` rule also stops the pulse |
+| 46 | The order builder was `position: sticky` but taller than the window | I reported that the left side would not scroll until the right side reached its end: the bottom of the builder (totals, strategy, button) stayed below the screen until the page ended | The builder is capped at the window height and only its product list scrolls; on windows under 640 px it is not sticky. A script checked that the button stays visible at four window sizes and scroll positions |
+| 47 | Bold chat text drawn with a yellow highlighter, plus uppercase slab-serif type, monospace numbers, thick ink outlines and hard offset shadows | I said it looked like an old computer, not modern web design | Inter, hairline borders, soft layered shadows, gradients, tinted badges, eased transitions; bold chat text is just bold. The chat header's "traffic light" dots became a gradient avatar |
+| 48 | Corner resize grip at the very edge of the console | The browser test failed after the corners became more rounded: the rounded clip swallowed clicks on the grip's outer pixels | Grip moved 4 px inward, fully inside the rounded area |
+| 49 | Warm glows on the blue recommendation banner | Screenshot review: yellow and orange over blue blended into a muddy tone | A soft white highlight instead |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._
 
@@ -172,7 +177,7 @@ Everything below was **run**, not assumed. The outputs are in the transcript and
    * driven in a real headless Chrome with Playwright, in light, dark and phone layouts;
    * screenshots were inspected after each change, which is how mistakes #22–#24 were found;
    * no JavaScript errors, and no horizontal overflow at 390 px width;
-   * six end-to-end tests cover the main journeys and fail on any JavaScript error.
+   * seven end-to-end UI tests cover the main journeys (plus five for the assistant console) and fail on any JavaScript error; one of them guards the scrolling fix (#46) and was checked to fail against the previous stylesheet.
 8. **AI assistant without a live key:**
    * the agent loop was tested through the **real `anthropic` SDK** with a mock HTTP transport replaying scripted server-sent-event streams;
    * this exercises the real stream parsing, tool execution, database writes and the exact request bodies;

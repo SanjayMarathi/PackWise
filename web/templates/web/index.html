@@ -15,7 +15,7 @@
     })();
   </script>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg stroke='%230b0b0f' stroke-width='1.6' stroke-linejoin='round'%3E%3Cpath fill='%23ffc72c' d='M16 3 28 9.5 16 16 4 9.5z'/%3E%3Cpath fill='%23ff6a1f' d='M4 9.5 16 16v13L4 22.5z'/%3E%3Cpath fill='%232f5bff' d='M28 9.5 16 16v13l12-6.5z'/%3E%3C/g%3E%3Cpath stroke='%23f23c3c' stroke-width='2.6' stroke-linecap='round' d='M10 6.3 22 12.8'/%3E%3C/svg%3E">
-  <link rel="preload" href="{% static 'web/vendor/fonts/roboto-slab-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{% static 'web/vendor/fonts/inter-latin-wght-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
   <script type="importmap">
     {"imports": {
@@ -27,11 +27,10 @@
 <body>
   <div class="backdrop" aria-hidden="true">
     <div class="layer">
-      <span class="shape sun"></span>
-      <span class="shape square"></span>
-      <span class="shape half"></span>
-      <span class="shape tri"></span>
-      <span class="shape ring"></span>
+      <span class="orb orb-orange"></span>
+      <span class="orb orb-blue"></span>
+      <span class="orb orb-yellow"></span>
+      <span class="orb orb-red"></span>
 
       <div class="bg-window w-catalog">
         <div class="chrome"><i></i><i></i><i></i><span>box-catalogue.csv</span></div>
@@ -51,7 +50,7 @@
           <!-- container (wireframe) -->
           <path stroke-dasharray="4 4" d="M70 90 180 30 350 122 240 182Z M70 90v80l170 92 110-60v-80 M240 182v80"/>
           <!-- packed items: top, front, side faces in the accent colours -->
-          <g stroke="#0b0b0f">
+          <g stroke="#ffffff" stroke-opacity=".7">
             <path fill="#ffc72c" d="M95 120 160 85 230 123 165 158Z"/>
             <path fill="#ff6a1f" d="M95 120v38l70 38v-38Z"/>
             <path fill="#d9540f" d="M165 158v38l65-35v-38Z"/>

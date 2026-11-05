@@ -42,6 +42,26 @@ def test_pack_an_order_shows_box_3d_plan_and_instructions(app):
     expect(app.get_by_test_id("stats")).to_contain_text("Medium")
 
 
+def test_order_builder_stays_reachable_while_the_page_scrolls(app):
+    """Regression: the sticky builder was taller than the window, so its totals and button
+    stayed off-screen until the page reached its very end."""
+    app.set_viewport_size({"width": 1440, "height": 780})
+    add(app, "LAPTOP-14", 2)
+    add(app, "BOOK-HC", 2)
+    find_box(app)
+    scroll_room = app.evaluate("document.documentElement.scrollHeight - innerHeight")
+    assert scroll_room > 600  # the results are much taller than the window
+    for fraction in (0.35, 0.7):
+        target = int(fraction * scroll_room)
+        app.evaluate(f"window.scrollTo(0, {target})")
+        app.wait_for_function(f"Math.abs(scrollY - {target}) < 2")
+        button = app.get_by_test_id("find-box").bounding_box()
+        assert button["y"] >= 0, (fraction, button)
+        assert button["y"] + button["height"] <= 780, (fraction, button)
+    # The product list scrolls inside the card instead.
+    assert app.get_by_test_id("product-list").evaluate("e => e.scrollHeight > e.clientHeight")
+
+
 def test_order_that_no_box_can_hold(app):
     add(app, "MONITOR-27", 6)  # 45 kg of 70 cm monitors
     find_box(app)

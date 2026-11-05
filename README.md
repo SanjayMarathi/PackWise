@@ -45,12 +45,13 @@ Open the live URL. There are no logins and nothing to install.
 The page is a thin client over the REST API (`web/static/web/js/`). It is plain ES modules with no build step, and the 3D view uses three.js (vendored, MIT licence). All business rules live behind the API, so everything the page does is also available and tested through `/api/`. It works on phones (responsive layout) and follows the system light/dark theme.
 
 **Look and feel:**
-* **Colours:** a black-and-white base (light mode is black on white, dark mode is white on black) with four bold accents. Orange marks actions, blue marks selection and the recommended box, yellow marks highlights and the active tab, and red marks rejections and errors. A toggle in the top bar remembers your choice; without one, the page follows the system setting.
-* **Type:** uppercase slab-serif headings (Roboto Slab, vendored, Apache 2.0) with wide letter-spacing and small spaced-out labels above them, each led by a four-colour stripe.
-* **Shapes:** a Bauhaus-inspired style with thick ink outlines, hard offset shadows, colour-coded card headers and circular icon badges.
-* **Backdrop:** a dot grid with geometric shapes (an orange circle, a blue square, a yellow half-disc and a red triangle) and tilted "window" cards showing a box catalogue, an isometric 3D packer, a packing slip and a dimensioned carton.
-* **3D view:** items take the accent colours first, then ink and lighter tints, with crisp outlines so neighbouring items stay distinct.
-* **Motion:** the pulsing and bouncing indicators stop when the system asks for reduced motion.
+* **Colours:** a black-and-white base (light mode is black on white, dark mode is white on black) with four accents. Orange marks actions, blue marks selection and the recommended box, yellow marks highlights, and red marks rejections and errors. A toggle in the top bar remembers your choice; without one, the page follows the system setting.
+* **Type:** Inter (vendored variable font, SIL Open Font Licence 1.1), with tight, heavy headings and tabular figures for every number.
+* **Surfaces:** hairline borders, soft layered shadows, gradient call-to-action buttons, a gradient recommendation banner and soft tinted badges. Each card carries a small accent marker.
+* **Backdrop:** a fading dot grid, blurred colour glows and tilted "window" cards showing a box catalogue, an isometric 3D packer, a packing slip and a dimensioned carton.
+* **Motion:** short eased transitions on hover, focus and theme changes; pages, messages and meters ease in. All of it stops when the system asks for reduced motion.
+* **Layout:** on the Pack order page the order builder stays beside the results while you scroll. It never grows taller than the window: only its product list scrolls, so the totals and the button stay reachable.
+* **3D view:** items take the accent colours first, then ink and lighter tints, with thin outlines so neighbouring items stay distinct.
 
 ### The AI assistant
 
@@ -424,7 +425,7 @@ Utilization is compared as an exact `Fraction`, so ties are genuine ties. The de
 | Database | PostgreSQL 17 via psycopg 3, `dj-database-url` |
 | API docs | drf-spectacular (OpenAPI 3, Swagger UI, ReDoc) |
 | Serving | Gunicorn, WhiteNoise (static files) |
-| Web interface | Django template + vanilla ES modules (no build step), three.js r160 for the 3D view, Roboto Slab |
+| Web interface | Django template + vanilla ES modules (no build step), three.js r160 for the 3D view, Inter font |
 | AI assistant | Gemini (`gemini-3.6-flash`) via `google-genai` 2.34, or Claude (`claude-opus-5-5`) via `anthropic` 2.5: streaming, tool use. Claude also gets prompt caching and refusal fallbacks |
 | Tests | pytest, pytest-django, pytest-cov, DRF `APIClient`, Playwright (browser end-to-end) |
 | Quality | ruff (lint + format), `manage.py check --deploy`, schema validation |
@@ -676,7 +677,7 @@ ruff check . && ruff format --check .
 | `assistant/tests/test_gemini.py` | The Gemini loop through the **real `google-genai` SDK** over a scripted HTTP transport: function calls with ids, thought signatures replayed verbatim (append-only), identical tool schemas, safety blocks, truncated calls never executed, rate-limit/key/model/server errors, provider selection |
 | `assistant/tests/` | The agent loop through the **real Anthropic SDK** over a scripted HTTP transport (no network): multi-round tool use, an append-only history replayed verbatim, request parameters (model, betas, fallbacks, thinking binding, effort, caching), refusal, truncated tool input never executed, API errors, round limit; every tool against real services; the chat API (NDJSON, Accept negotiation, busy/full conversations, throttling) |
 | `e2e/test_assistant.py` | In a real browser: offline state without a key; a streamed chat that creates an order and renders the card, bold and bullet text, a reload that restores the conversation, "Open 3D plan"; error display and starting over; console resize, maximize and remembered size; the light/dark toggle (pure black / pure white, persisted) |
-| `e2e/test_ui.py` | In a real browser: pack an order (3D plan, instructions, alternatives, rejections), an order no box fits, re-run from the order page, product create/validate/edit/delete, the delete conflict for a product in use, a deactivated box no longer recommended. Fails on any JavaScript error |
+| `e2e/test_ui.py` | In a real browser: pack an order (3D plan, instructions, alternatives, rejections), the order builder staying reachable while the page scrolls, an order no box fits, re-run from the order page, product create/validate/edit/delete, the delete conflict for a product in use, a deactivated box no longer recommended. Fails on any JavaScript error |
 
 Real output is in [TEST_OUTPUT.md](TEST_OUTPUT.md), and CI runs on every push and pull request.
 
