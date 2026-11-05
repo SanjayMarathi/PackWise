@@ -27,7 +27,7 @@ PackWise is a Django REST API that recommends the **cheapest shipping box that c
 12. [Running the tests](#12-running-the-tests)
 13. [Docker](#13-docker)
 14. [Docker Hub image](#14-docker-hub-image)
-15. [Deployment (Render)](#15-deployment-render)
+15. [Deployment (Hugging Face Spaces)](#15-deployment-hugging-face-spaces)
 16. [Future improvements](#16-future-improvements)
 17. [Project documents](#17-project-documents)
 
@@ -318,7 +318,7 @@ Utilization is compared as an exact `Fraction`, so ties are genuine ties. The de
 | Serving | Gunicorn, WhiteNoise (static files) |
 | Tests | pytest, pytest-django, pytest-cov, DRF `APIClient` |
 | Quality | ruff (lint + format), `manage.py check --deploy`, schema validation |
-| DevOps | Docker (multi-stage, non-root), Docker Compose, GitHub Actions, Docker Hub, Render |
+| DevOps | Docker (multi-stage, non-root), Docker Compose, GitHub Actions, Docker Hub, Hugging Face Spaces (Docker SDK) |
 
 Versions are pinned in [`requirements.txt`](requirements.txt) and [`requirements-dev.txt`](requirements-dev.txt).
 
@@ -353,8 +353,11 @@ All configuration comes from environment variables. See [`.env.example`](.env.ex
 | `DJANGO_SETTINGS_MODULE` | `config.settings.development` (manage.py), `…production` (WSGI/Docker) | Settings module |
 | `DJANGO_SECRET_KEY` | dev-only key in development; **required** in production (≥ 40 chars) | Cryptographic signing |
 | `DATABASE_URL` | `postgres://packwise:packwise@localhost:5432/packwise` (dev/test); **required** in production | Database |
-| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,…` (dev); **required** in production unless `RENDER_EXTERNAL_HOSTNAME` is set | Host header allow-list |
-| `DJANGO_SECURE_SSL_REDIRECT` | `true` (production) | Redirect HTTP→HTTPS behind a TLS proxy |
+| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,…` (dev); **required** in production unless `SPACE_HOST` is set | Host header allow-list |
+| `SPACE_HOST` | set by Hugging Face Spaces | Added to `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` automatically |
+| `DJANGO_SECURE_SSL_REDIRECT` | `true` (production) | Redirect HTTP→HTTPS in Django (turn off only if the edge already does it) |
+| `DJANGO_SECURE_COOKIES` | `true` (production) | `Secure` flag on session/CSRF cookies |
+| `DJANGO_FRAME_ANCESTORS` | empty (`X-Frame-Options: DENY`) | Origins allowed to embed the app (CSP `frame-ancestors`) |
 | `DJANGO_SECURE_HSTS_SECONDS` | `3600` | HSTS max-age |
 | `PACKWISE_RANKING_STRATEGY` | `lowest_cost` | Default ranking strategy |
 | `PACKWISE_MAX_ITEMS_PER_ORDER` | `200` | Max units per order (bounds CPU per request) |
@@ -556,7 +559,7 @@ docker compose up --build          # API on http://localhost:8000/api/docs/ , Po
 docker compose down -v             # stop and delete the database volume
 ```
 
-* **Image:** multi-stage build (wheels built in a throwaway stage), `python:3.12-slim`, static files collected at build time, runs as the unprivileged user `app` (uid 10001), Gunicorn on `$PORT`, plus a `HEALTHCHECK` on `/api/health/`.
+* **Image:** multi-stage build (wheels built in a throwaway stage), `python:3.12-slim`, static files collected at build time, runs as the unprivileged user `app` (uid 1000, the uid Hugging Face Spaces uses) with root-owned, read-only code, Gunicorn on `$PORT`, plus a `HEALTHCHECK` on `/api/health/`.
 * **Compose:** `db` (PostgreSQL 17 with a health check and a persistent `pgdata` volume), then `migrate` (a one-shot job that runs `migrate` and loads the demo data), then `web`. Web starts only after the database is healthy **and** migrations have completed, so replicas never race on schema changes.
 * **Production-like run:** [`docker-compose.prod.yml`](docker-compose.prod.yml) uses production settings, JSON logs, a required secret and DB password, and can pull the published image:
 
@@ -581,30 +584,59 @@ docker run --rm -p 8000:8000 \
   <dockerhub-user>/packwise:latest
 ```
 
-Required repository secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub access token, not your password). `RENDER_DEPLOY_HOOK_URL` is optional; set it to redeploy Render automatically after each push.
+Required repository secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub access token, not your password).
 
-## 15. Deployment (Render)
+Optional, to redeploy the Hugging Face Space automatically after each push:
 
-[`render.yaml`](render.yaml) is a Render Blueprint that creates:
+* secret `HF_TOKEN`: a Hugging Face token with write access to the Space;
+* repository variable `HF_SPACE_ID`, e.g. `sanjaymarathi/packwise`.
 
-* a **web service** running the Docker Hub image, with health check `/api/health/`, a generated `DJANGO_SECRET_KEY`, and `DATABASE_URL` wired from the database;
-* a **managed PostgreSQL 17** database.
+## 15. Deployment (Hugging Face Spaces)
 
-To deploy:
+The API runs as a **Docker Space** that executes the **published Docker Hub image**. Nothing is rebuilt from source on the platform. The data lives in an external managed **PostgreSQL** database.
 
-1. Push the image (Docker workflow) and replace `DOCKERHUB_USERNAME` in `render.yaml`.
-2. In Render: **New → Blueprint**, select the repository, and apply.
-3. Optionally copy the service's **Deploy Hook URL** into the GitHub secret `RENDER_DEPLOY_HOOK_URL`.
+```mermaid
+flowchart LR
+    gh[GitHub push to main] --> tests[Tests workflow]
+    tests -->|passed| docker[Docker workflow<br/>build, smoke test, push]
+    docker -->|latest + SHA tags| hub[(Docker Hub<br/>sanjaymarathi/packwise)]
+    docker -->|deploy.py commits<br/>FROM image:SHA| space[Hugging Face Space<br/>Docker SDK]
+    hub -->|pulled at build| space
+    space -->|DATABASE_URL, TLS| db[(Managed PostgreSQL)]
+    user([Reviewer]) -->|HTTPS| space
+```
 
-Production behaviour:
+[`deploy/huggingface/`](deploy/huggingface/) holds everything the Space needs:
 
-* `DEBUG=False`.
-* HTTPS is terminated by Render; Django trusts `X-Forwarded-Proto`, redirects HTTP to HTTPS, sets secure cookies and HSTS.
-* `ALLOWED_HOSTS` is taken from `RENDER_EXTERNAL_HOSTNAME`.
-* Migrations run at container start (`RUN_MIGRATIONS=true`), because free instances have no pre-deploy hook.
+* `Dockerfile`: `FROM docker.io/sanjaymarathi/packwise:<tag>`, plus platform settings (port 7860, `RUN_MIGRATIONS=true`, demo seed, framing allowed only for `huggingface.co`);
+* `README.md`: the Space card (`sdk: docker`, `app_port: 7860`);
+* `deploy.py`: pins the image tag and commits both files to the Space, which makes Hugging Face rebuild and restart it.
+
+**One-time setup**
+
+1. Create the managed PostgreSQL database and copy its connection string (with `sslmode=require`).
+2. Create the Space (`deploy.py --create`), or let CI create it.
+3. In the Space settings → *Variables and secrets*, add the secrets:
+   * `DJANGO_SECRET_KEY`: generate one with `python -c "import secrets; print(secrets.token_urlsafe(64))"`;
+   * `DATABASE_URL`: the connection string from step 1.
+4. Deploy:
+
+```bash
+pip install huggingface_hub
+python deploy/huggingface/deploy.py --space sanjaymarathi/packwise \
+    --image docker.io/sanjaymarathi/packwise:<commit-sha> --create
+```
+
+After that, every push to `main` that passes the tests is deployed automatically, as long as `HF_TOKEN` and `HF_SPACE_ID` are configured (see section 14).
+
+**Production behaviour**
+
+* `DEBUG=False`, and the app refuses to start without a strong `DJANGO_SECRET_KEY` and a `DATABASE_URL`.
+* `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` come from `SPACE_HOST`, which Hugging Face sets (e.g. `sanjaymarathi-packwise.hf.space`).
+* TLS is terminated at Hugging Face's edge. Django trusts `X-Forwarded-Proto` and keeps cookies `Secure`.
+* Migrations run at container start; Django migrations take locks, so restarts are safe.
+* The Space page on huggingface.co embeds the app in an iframe. That one origin is allowed via CSP `frame-ancestors`; every other origin still gets the default deny.
 * The health probe bypasses host validation, since platform probes connect by IP. See [`common/middleware.py`](common/middleware.py).
-
-Render's free tier spins the service down when idle, so the first request takes 30–60 s. Free PostgreSQL databases expire after 30 days.
 
 ## 16. Future improvements
 

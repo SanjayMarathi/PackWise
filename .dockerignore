@@ -38,4 +38,4 @@ tests
 **/tests
 conftest.py
 docker-compose*.yml
-render.yaml
+deploy

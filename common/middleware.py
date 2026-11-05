@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import JsonResponse
 
 from .health import health_status
@@ -25,3 +26,21 @@ class HealthCheckMiddleware:
             payload, status = health_status()
             return JsonResponse(payload, status=status)
         return self.get_response(request)
+
+
+class FrameAncestorsMiddleware:
+    """Allow framing only by this site and ``settings.FRAME_ANCESTORS``.
+
+    Used instead of ``XFrameOptionsMiddleware`` when a known site must embed the
+    app. ``X-Frame-Options`` can only say DENY or SAMEORIGIN, whereas CSP
+    ``frame-ancestors`` can name specific origins.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.policy = " ".join(["frame-ancestors", "'self'", *getattr(settings, "FRAME_ANCESTORS", [])])
+
+    def __call__(self, request):
+        response = self.get_response(request)
+        response.headers.setdefault("Content-Security-Policy", self.policy)
+        return response

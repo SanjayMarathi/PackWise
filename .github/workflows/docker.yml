@@ -116,17 +116,18 @@ jobs:
             org.opencontainers.image.title=PackWise
           cache-from: type=gha
 
-      - name: Trigger Render deploy (optional)
+      - name: Deploy to Hugging Face Space (optional)
         if: env.PUBLISH == 'true'
         env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-          DIGEST: ${{ steps.push.outputs.digest }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ vars.HF_SPACE_ID }}
         run: |
-          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "RENDER_DEPLOY_HOOK_URL not set; skipping deploy."
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE_ID" ]; then
+            echo "HF_TOKEN secret or HF_SPACE_ID variable not set; skipping deploy."
             exit 0
           fi
-          image="docker.io/${IMAGE_NAME}@${DIGEST}"
-          encoded=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$image")
-          curl -fsS -X POST "${RENDER_DEPLOY_HOOK_URL}&imgURL=${encoded}" > /dev/null
-          echo "Render deploy triggered for $image"
+          python3 -m venv /tmp/hf
+          /tmp/hf/bin/pip install --quiet "huggingface_hub==2.4.0"
+          # Pin the Space to the exact image that was just tested and pushed.
+          /tmp/hf/bin/python deploy/huggingface/deploy.py \
+            --space "$HF_SPACE_ID" --image "docker.io/${IMAGE_NAME}:${COMMIT_SHA}"

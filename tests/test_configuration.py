@@ -59,11 +59,11 @@ def test_required_env_and_database_url(monkeypatch):
 # ---------------------------------------------------------------- production settings (separate process)
 
 
-def load_production_settings(**env):
+def load_production_settings(code=None, **env):
     """Import config.settings.production in a clean interpreter with ``env``."""
-    clean = {k: v for k, v in os.environ.items() if not k.startswith(("DJANGO_", "DATABASE_URL", "RENDER_"))}
+    clean = {k: v for k, v in os.environ.items() if not k.startswith(("DJANGO_", "DATABASE_URL", "SPACE_"))}
     clean.update(env)
-    code = "import config.settings.production as s; print(s.DEBUG, s.ALLOWED_HOSTS, s.SECURE_SSL_REDIRECT)"
+    code = code or "import config.settings.production as s; print(s.DEBUG, s.ALLOWED_HOSTS, s.SECURE_SSL_REDIRECT)"
     return subprocess.run(  # noqa: S603 - fixed interpreter and code
         [sys.executable, "-c", code], cwd=ROOT, env=clean, capture_output=True, text=True, timeout=60, check=False
     )
@@ -85,8 +85,8 @@ def test_production_rejects_a_weak_secret_key():
     assert "strong, random value" in result.stderr
 
 
-def test_production_accepts_a_render_generated_secret():
-    """Render's generateValue yields base64(256 random bits) = 44 characters."""
+def test_production_accepts_a_256_bit_base64_secret():
+    """base64(256 random bits) = 44 characters: strong, and must be accepted."""
     import base64
     import secrets
 
@@ -108,10 +108,29 @@ def test_production_settings_are_hardened():
     result = load_production_settings(
         DJANGO_SECRET_KEY=STRONG_KEY,
         DATABASE_URL="postgres://u:p@h/db",
-        RENDER_EXTERNAL_HOSTNAME="packwise.onrender.com",
+        SPACE_HOST="user-packwise.hf.space",  # set by Hugging Face Spaces
     )
     assert result.returncode == 0, result.stderr
-    assert result.stdout.strip() == "False ['packwise.onrender.com'] True"
+    assert result.stdout.strip() == "False ['user-packwise.hf.space'] True"
+
+
+def test_production_frame_ancestors_replace_x_frame_options():
+    code = (
+        "import config.settings.production as s; "
+        "print('common.middleware.FrameAncestorsMiddleware' in s.MIDDLEWARE, "
+        "'django.middleware.clickjacking.XFrameOptionsMiddleware' in s.MIDDLEWARE, s.SESSION_COOKIE_SECURE)"
+    )
+    result = load_production_settings(
+        code,
+        DJANGO_SECRET_KEY=STRONG_KEY,
+        DATABASE_URL="postgres://u:p@h/db",
+        DJANGO_ALLOWED_HOSTS="api.example.com",
+        DJANGO_FRAME_ANCESTORS="https://huggingface.co",
+        DJANGO_SECURE_SSL_REDIRECT="false",
+    )
+    assert result.returncode == 0, result.stderr
+    # Cookies stay Secure even when the edge (not Django) handles the HTTPS redirect.
+    assert result.stdout.strip() == "True False True"
 
 
 # ---------------------------------------------------------------- seed command

@@ -495,6 +495,21 @@ def test_health_check_accepts_probe_hosts_but_other_paths_do_not(api_client):
     assert api_client.get("/api/products/", HTTP_HOST="10.0.0.7:8000").status_code == 400
 
 
+def test_frame_ancestors_middleware_allows_only_listed_origins(api_client, settings):
+    settings.FRAME_ANCESTORS = ["https://huggingface.co"]
+    settings.MIDDLEWARE = [
+        "common.middleware.FrameAncestorsMiddleware" if m.endswith("XFrameOptionsMiddleware") else m
+        for m in settings.MIDDLEWARE
+    ]
+    response = api_client.get("/api/products/")
+    assert response["Content-Security-Policy"] == "frame-ancestors 'self' https://huggingface.co"
+    assert "X-Frame-Options" not in response
+
+
+def test_frames_are_denied_by_default(api_client):
+    assert api_client.get("/api/products/")["X-Frame-Options"] == "DENY"
+
+
 def test_health_view_documents_the_same_payload(rf):
     from common.views import health
 

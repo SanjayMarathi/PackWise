@@ -19,14 +19,15 @@ This project was built with heavy AI assistance. This file records what the AI d
 1. **Master prompt** (first message of the session). It contained:
    * the original hiring-assignment brief (AI-assisted box selection system; required deliverables);
    * a detailed specification titled *"MASTER PROMPT: Build, Test, Containerize and Deploy PackWise"*. It asked the AI to act as a senior backend/DevOps engineer and covered:
-     * the stack: Django, DRF, PostgreSQL, pytest, drf-spectacular, Docker, GitHub Actions, Render;
+     * the stack: Django, DRF, PostgreSQL, pytest, drf-spectacular, Docker, GitHub Actions, Render "or another suitable public hosting provider";
      * the app layout (`inventory`, `orders`, `packing`, `config`) and the five models;
      * a 9-step 3D packing algorithm (validation, quantity expansion, orientations, filtering, sorting, Maximal Empty Spaces, Best Short Side Fit, AABB collision checks, results);
      * the recommendation ranking rules, the REST endpoints and test requirements;
      * Docker/CI/CD/deployment requirements and the documentation list.
 
    It contained explicit instructions not to fabricate test results, deployments, transcripts or personal learnings, to work phase by phase and verify each phase, and to ask before external account actions.
-2. **Follow-up prompts:** ✍️ Author: _add the follow-up messages from the transcript (e.g. answers about the GitHub repository, Docker Hub and Render)._
+2. **Follow-up prompts / answers.** When the AI asked about the external accounts, I approved a public GitHub repository `SanjayMarathi/PackWise` and gave the Docker Hub username `sanjaymarathi`. Instead of Render, I asked for deployment on my Hugging Face account (Pro), which changed the deployment target.
+   ✍️ Author: _add any later follow-up messages from the transcript._
 
 The exact wording of every prompt is in the exported transcript.
 
@@ -38,7 +39,7 @@ Everything in the repository was first drafted by the AI in this session:
 * **Django apps:** models with CHECK/UNIQUE/partial-unique constraints, services, strict serializers, views, the error envelope, JSON logging and the health check.
 * **Tests:** 590+ tests, including seeded randomized property tests and a multi-threaded concurrency test.
 * **Docker:** multi-stage non-root image, compose files, entrypoint.
-* **CI and deployment:** GitHub Actions workflows (tests, deploy checklist, gated Docker publish with smoke test) and the Render blueprint.
+* **CI and deployment:** GitHub Actions workflows (tests, deploy checklist, gated Docker publish with smoke test, Hugging Face deploy step) and the Hugging Face Space files. A Render blueprint was written first, then replaced when I chose Hugging Face.
 * **Docs:** README, this file's factual sections, and TEST_OUTPUT.md (captured from real runs).
 
 The AI also **decided** several things that were not in the prompt. Each is listed here so it can be reviewed:
@@ -80,7 +81,10 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 13 | Strict-fields mixin raised on unknown keys **before** field validation | Real API output showed only `colour` reported for a payload that also had `length: 0` | All errors now reported together; test added |
 | 14 | README sample response partly filled **from memory of an earlier run** (`execution_time_ms` 19.3; a rejected box missing) | Caught by re-reading the captured JSON before committing | Replaced with real values (98.985 ms; `BX-SHOE` included) |
 | 15 | `DisallowedHost` logged at ERROR with a traceback per bot request | Seen in the production-like container logs | Logger silenced (as the Django docs recommend) |
-| 16 | `check --deploy` warning W021 (HSTS preload) | Preload requires `includeSubDomains`, impossible on the shared `onrender.com` | Silenced with a comment explaining why |
+| 16 | `check --deploy` warning W021 (HSTS preload) | Preload requires `includeSubDomains`, impossible on a shared platform domain (`onrender.com`, later `hf.space`) | Silenced with a comment explaining why |
+| 17 | Render deployment (`render.yaml`, deploy-hook CI step) | I chose Hugging Face Spaces instead | Replaced with `deploy/huggingface/` (Space Dockerfile pinned to the Docker Hub image, `deploy.py`, CI step); uid changed 10001 → 1000 (Spaces' uid); `SPACE_HOST` host detection; CSP `frame-ancestors` so the Space page can embed the app; secure-cookie flag decoupled from the SSL-redirect flag |
+| 18 | `FrameAncestorsMiddleware` read `settings.FRAME_ANCESTORS` directly | Self-review: only production settings define it, so it would crash elsewhere | Falls back to an empty list |
+| 19 | Image code owned by the runtime user (`COPY --chown`) | Hardening review: a compromised process could rewrite its own code | Code root-owned and read-only; verified `touch /app/x` → permission denied |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._
 
@@ -111,7 +115,7 @@ Everything below was **run**, not assumed. The outputs are in the transcript and
    * `manage.py spectacular --validate --fail-on-warn`;
    * `manage.py check --deploy --fail-level WARNING` against production settings.
 5. **Container checks:**
-   * `docker compose up --build`: migrations job, healthy web container, running as uid 10001;
+   * `docker compose up --build`: migrations job, healthy web container, running as the non-root uid 1000 with read-only code;
    * a real HTTP flow (create order → recommend → fetch stored result);
    * the production-like compose stack: unknown Host gives 400, probe Host gives 200, security headers present, JSON 404s, JSON logs.
 6. **CI:** GitHub Actions runs lint, migrations, schema validation, tests with a coverage gate (≥ 90%) on Python 3.12 and 3.14, the deploy checklist, and an image smoke test before publishing.

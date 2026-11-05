@@ -24,24 +24,24 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=8000 \
     WEB_CONCURRENCY=2
 
-# Unprivileged user that owns nothing it does not need to.
-RUN groupadd --system --gid 10001 app \
-    && useradd --system --uid 10001 --gid app --home-dir /app --no-create-home app
+# Unprivileged user. uid 1000 matches the user that Hugging Face Spaces runs containers as.
+RUN groupadd --gid 1000 app \
+    && useradd --uid 1000 --gid app --home-dir /app --no-create-home --shell /usr/sbin/nologin app
 
 WORKDIR /app
 
 COPY --from=builder /wheels /wheels
 RUN pip install --no-index --find-links=/wheels /wheels/* && rm -rf /wheels
 
-COPY --chown=app:app . .
+# Code stays owned by root and is read-only to the runtime user: the app never writes to disk.
+COPY . .
 
 # collectstatic only needs settings that import cleanly; these throwaway values never reach runtime.
 RUN DJANGO_SECRET_KEY=build-only-collectstatic-key-0123456789-0123456789-0123456789 \
     DATABASE_URL=postgres://build:build@localhost:5432/build \
     DJANGO_ALLOWED_HOSTS=localhost \
     python manage.py collectstatic --noinput --verbosity 0 \
-    && chmod +x docker/entrypoint.sh \
-    && chown -R app:app /app/staticfiles
+    && chmod 755 docker/entrypoint.sh
 
 USER app
 
