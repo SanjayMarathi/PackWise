@@ -119,6 +119,15 @@ Everything below was **run**, not assumed. The outputs are in the transcript and
    * a real HTTP flow (create order → recommend → fetch stored result);
    * the production-like compose stack: unknown Host gives 400, probe Host gives 200, security headers present, JSON 404s, JSON logs.
 6. **CI:** GitHub Actions runs lint, migrations, schema validation, tests with a coverage gate (≥ 90%) on Python 3.12 and 3.14, the deploy checklist, and an image smoke test before publishing.
-7. **Deployment:** the public URL is checked with real requests after deploying (see README).
+7. **Deployment:** the public URL https://sanjaymarathi-packwise.hf.space was checked with real requests after CI deployed it:
+   * `/api/health/` returned database `ok` and version = the deployed commit SHA;
+   * the seeded catalogue was present;
+   * create order → recommend returned `BX-M-FLAT` at ₹35, the same as locally, and the stored result matched;
+   * an impossible order returned `no_feasible_box`;
+   * error envelopes were correct, and Swagger and the schema returned 200;
+   * plain HTTP got a 301 to HTTPS;
+   * the CSP `frame-ancestors` header was present.
+
+   The `Strict-Transport-Security` header on live responses showed that Hugging Face forwards `X-Forwarded-Proto: https`. Django's own HTTPS redirect, first disabled for the Space as a precaution against redirect loops, was then switched back on and re-verified.
 
 ✍️ Author: _describe what I verified personally (e.g. read the algorithm and traced an example by hand, ran the tests myself, tried the Swagger UI, reviewed each file)._

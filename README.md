@@ -2,12 +2,18 @@
 
 PackWise is a Django REST API that recommends the **cheapest shipping box that can physically hold an order**. It doesn't just compare volumes. A pure-Python 3D bin-packing engine places every unit, with rotation, inside each candidate box. The placement is then checked by an independent collision checker before it is reported as feasible.
 
+[![Tests](https://github.com/SanjayMarathi/PackWise/actions/workflows/tests.yml/badge.svg)](https://github.com/SanjayMarathi/PackWise/actions/workflows/tests.yml)
+[![Docker](https://github.com/SanjayMarathi/PackWise/actions/workflows/docker.yml/badge.svg)](https://github.com/SanjayMarathi/PackWise/actions/workflows/docker.yml)
+
 | | |
 |---|---|
-| **Live API** | _added after deployment is verified_ |
-| **Swagger UI** | _added after deployment is verified_ (`/api/docs/`) |
-| **Docker Hub** | _added after the first image push_ |
-| **CI** | _GitHub Actions badge/link added after the first push_ |
+| **Live API** | https://sanjaymarathi-packwise.hf.space (Hugging Face Space: https://huggingface.co/spaces/sanjaymarathi/packwise) |
+| **Swagger UI** | https://sanjaymarathi-packwise.hf.space/api/docs/ |
+| **Health** | https://sanjaymarathi-packwise.hf.space/api/health/ |
+| **Docker Hub** | https://hub.docker.com/r/sanjaymarathi/packwise (`latest` + commit-SHA tags) |
+| **CI** | https://github.com/SanjayMarathi/PackWise/actions |
+
+The live instance has the demo catalogue (6 boxes, 8 products) loaded. The quickest way to try it is Swagger: `POST /api/orders/` with `{"items": [{"product_id": 1, "quantity": 2}, {"product_id": 2, "quantity": 1}]}`, then `POST /api/orders/{id}/recommend/`.
 
 ---
 
@@ -614,7 +620,7 @@ flowchart LR
 
 **One-time setup**
 
-1. Create the managed PostgreSQL database and copy its connection string (with `sslmode=require`).
+1. Create the managed PostgreSQL database and copy its connection string (with `sslmode=require`). The live instance uses **Neon** (PostgreSQL 17, AWS us-east-1, direct connection without pooling).
 2. Create the Space (`deploy.py --create`), or let CI create it.
 3. In the Space settings → *Variables and secrets*, add the secrets:
    * `DJANGO_SECRET_KEY`: generate one with `python -c "import secrets; print(secrets.token_urlsafe(64))"`;
@@ -633,7 +639,7 @@ After that, every push to `main` that passes the tests is deployed automatically
 
 * `DEBUG=False`, and the app refuses to start without a strong `DJANGO_SECRET_KEY` and a `DATABASE_URL`.
 * `ALLOWED_HOSTS` and `CSRF_TRUSTED_ORIGINS` come from `SPACE_HOST`, which Hugging Face sets (e.g. `sanjaymarathi-packwise.hf.space`).
-* TLS is terminated at Hugging Face's edge. Django trusts `X-Forwarded-Proto` and keeps cookies `Secure`.
+* TLS is terminated at Hugging Face's edge, which redirects plain HTTP with a 301. Django trusts `X-Forwarded-Proto`, sends HSTS, keeps cookies `Secure`, and keeps its own HTTPS redirect on as a second layer.
 * Migrations run at container start; Django migrations take locks, so restarts are safe.
 * The Space page on huggingface.co embeds the app in an iframe. That one origin is allowed via CSP `frame-ancestors`; every other origin still gets the default deny.
 * The health probe bypasses host validation, since platform probes connect by IP. See [`common/middleware.py`](common/middleware.py).

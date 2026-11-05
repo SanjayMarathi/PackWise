@@ -6,7 +6,7 @@ Real, unedited terminal output of the full test suite. It was captured by redire
 * **Branch coverage:** 99.7% overall (packing engine modules 99.0–100.0%)
 * **CI:** the same suite runs on GitHub Actions (Python 3.12 and 3.14, PostgreSQL 17).
 
-**GitHub Actions run:** _link added after the first CI run_
+**GitHub Actions run:** [Tests run 41979700177](https://github.com/SanjayMarathi/PackWise/actions/runs/41979700177): 596 passed on Python 3.12 and 3.14, coverage 99.69%, deployment checklist passed
 
 To reproduce:
 

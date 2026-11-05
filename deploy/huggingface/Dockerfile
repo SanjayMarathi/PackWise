@@ -5,8 +5,9 @@ FROM docker.io/sanjaymarathi/packwise:latest
 
 # Hugging Face routes the Space's HTTPS traffic to this port (app_port in README.md).
 ENV PORT=7860
-# TLS is terminated, and HTTP redirected, by Hugging Face's edge. Cookies stay Secure.
-ENV DJANGO_SECURE_SSL_REDIRECT=false
+# TLS is terminated at Hugging Face's edge, which forwards X-Forwarded-Proto: https (verified:
+# Django sends HSTS on live responses). Django's own HTTPS redirect therefore stays on (the
+# production default), as defence in depth behind the edge's HTTP->HTTPS redirect.
 # The Space page on huggingface.co shows the app in an iframe. Every other origin stays blocked.
 ENV DJANGO_FRAME_ANCESTORS=https://huggingface.co
 # No pre-deploy hook on Spaces: migrate (and load the idempotent demo catalogue) at start-up.
