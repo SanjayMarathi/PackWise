@@ -1,12 +1,12 @@
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
 from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 from common.views import health
+from web.views import index
 
 urlpatterns = [
-    path("", RedirectView.as_view(url="/api/docs/", permanent=False)),
+    path("", index, name="home"),  # browser interface (single page over the REST API)
     path("admin/", admin.site.urls),
     path("api/health/", health, name="health"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

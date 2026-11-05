@@ -58,6 +58,7 @@ class BoxOptionSerializer(serializers.Serializer):
     box_name = serializers.CharField()
     cost = serializers.FloatField(help_text="INR")
     total_weight = serializers.FloatField(help_text="kg")
+    max_weight = serializers.FloatField(help_text="The box's load limit in kg.")
     utilization = serializers.FloatField(help_text="Percentage of box volume occupied.")
     packing_feasible = serializers.BooleanField()
     box_dimensions = DimensionsSerializer()
@@ -124,6 +125,7 @@ def box_option_payload(rec: BoxRecommendation) -> dict:
         "box_name": rec.box.name,
         "cost": rec.box_cost,
         "total_weight": rec.total_weight,
+        "max_weight": rec.box.max_weight,
         "utilization": rec.utilization_percentage,
         "packing_feasible": True,
         "box_dimensions": details["box_dimensions"],

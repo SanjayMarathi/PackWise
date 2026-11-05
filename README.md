@@ -1,19 +1,47 @@
 # PackWise: Intelligent 3D Packaging & Box Optimization
 
-PackWise is a Django REST API that recommends the **cheapest shipping box that can physically hold an order**. It doesn't just compare volumes. A pure-Python 3D bin-packing engine places every unit, with rotation, inside each candidate box. The placement is then checked by an independent collision checker before it is reported as feasible.
+PackWise is a Django web application and REST API that recommends the **cheapest shipping box that can physically hold an order**. It doesn't just compare volumes. A pure-Python 3D bin-packing engine places every unit, with rotation, inside each candidate box. The placement is then checked by an independent collision checker before it is reported as feasible. The web interface shows the result as an interactive 3D packing plan with step-by-step loading instructions.
 
 [![Tests](https://github.com/SanjayMarathi/PackWise/actions/workflows/tests.yml/badge.svg)](https://github.com/SanjayMarathi/PackWise/actions/workflows/tests.yml)
 [![Docker](https://github.com/SanjayMarathi/PackWise/actions/workflows/docker.yml/badge.svg)](https://github.com/SanjayMarathi/PackWise/actions/workflows/docker.yml)
 
 | | |
 |---|---|
-| **Live API** | https://sanjaymarathi-packwise.hf.space (Hugging Face Space: https://huggingface.co/spaces/sanjaymarathi/packwise) |
-| **Swagger UI** | https://sanjaymarathi-packwise.hf.space/api/docs/ |
+| | |
+|---|---|
+| **Live web app** | **https://sanjaymarathi-packwise.hf.space** (also on the Hugging Face Space page: https://huggingface.co/spaces/sanjaymarathi/packwise) |
+| **Swagger UI (REST API)** | https://sanjaymarathi-packwise.hf.space/api/docs/ |
 | **Health** | https://sanjaymarathi-packwise.hf.space/api/health/ |
 | **Docker Hub** | https://hub.docker.com/r/sanjaymarathi/packwise (`latest` + commit-SHA tags) |
 | **CI** | https://github.com/SanjayMarathi/PackWise/actions |
 
-The live instance has the demo catalogue (6 boxes, 8 products) loaded. The quickest way to try it is Swagger: `POST /api/orders/` with `{"items": [{"product_id": 1, "quantity": 2}, {"product_id": 2, "quantity": 1}]}`, then `POST /api/orders/{id}/recommend/`.
+The live instance has the demo catalogue (6 boxes, 8 products) loaded.
+
+---
+
+## Using the web app
+
+Open the live URL. There are no logins and nothing to install.
+
+1. **Pack order:** pick products and quantities on the left, choose how to rank boxes, and press **Find the best box**. You get:
+   * the **recommended box** and its price;
+   * an interactive **3D packing plan**: drag to rotate, scroll to zoom, and press **Play** to watch the loading sequence;
+   * **packing instructions** with each item's position, rotated size and orientation (click a row to show the box up to that step);
+   * a meter of **space used** and **weight vs. the box limit**;
+   * the **ranked alternatives**, each one viewable in 3D;
+   * **every rejected box with its reason**, marked *proven impossible* or *no arrangement found*.
+2. **Orders:** the order history. Open an order to see its stored plan, or **re-run** it with another strategy.
+3. **Products** and **Boxes:** add, edit, search, (de)activate and delete. The server's validation errors appear next to the right field. Deleting something still used by an order is refused with an explanation. A deactivated box is never recommended.
+
+![Pack order: recommended box and 3D packing plan](docs/screenshots/pack-order.png)
+
+| Loading sequence (dark theme) | Instructions, meters and ranked alternatives |
+|---|---|
+| ![3D view at step 3 of 6](docs/screenshots/3d-loading-sequence-dark.png) | ![Packing instructions and alternatives](docs/screenshots/instructions-and-alternatives.png) |
+
+![Products management](docs/screenshots/products.png)
+
+The page is a thin client over the REST API (`web/static/web/js/`). It is plain ES modules with no build step, and the 3D view uses three.js (vendored, MIT licence). All business rules live behind the API, so everything the page does is also available and tested through `/api/`. It works on phones (responsive layout) and follows the system light/dark theme.
 
 ---
 
@@ -62,7 +90,8 @@ Among usable boxes, the business wants the **cheapest**. Comparing total volumes
 * **Loading instructions.** Each placement includes a sequence number, coordinates, rotated extents and an orientation label such as `WLH`.
 * **Concurrency-safe persistence.** Results are written under `SELECT … FOR UPDATE`, backed by unique and partial-unique constraints.
 * **Production hygiene.** Requests are strictly validated (unknown and read-only fields are rejected). Errors share one envelope, internals never leak, and logs are JSON. Throttling is on, security headers are set, a DB-aware health check is available, and the service runs as a non-root Gunicorn container.
-* **Tests and CI.** About 600 tests, ~99% branch coverage, randomized property tests, and CI on Python 3.12 and 3.14 against PostgreSQL 17.
+* **Web interface.** An order builder, an interactive 3D packing plan with a loading-sequence player, order history, and product/box management. Served by Django at `/`.
+* **Tests and CI.** About 610 Python tests with ~99% branch coverage, randomized property tests, and **browser end-to-end tests** (Playwright) for the main user journeys. CI runs on Python 3.12 and 3.14 against PostgreSQL 17.
 
 ## 3. Architecture
 
@@ -71,12 +100,13 @@ A **modular monolith** with a strict dependency direction:
 * `inventory` depends on nothing.
 * `orders` depends on `inventory`.
 * `packing` depends on `orders` and `inventory`.
+* `web` (the browser interface) depends only on the public REST API.
 
 The packing **engine** (`packing/algorithms`) imports nothing from Django. It can be unit-tested in milliseconds, and it could be reused outside the web app.
 
 ```mermaid
 flowchart LR
-    client([Client / Swagger UI]) -->|JSON over HTTPS| mw
+    client([Browser: web app / Swagger UI]) -->|JSON over HTTPS| mw
 
     subgraph django[Django + DRF process]
         mw[Middleware<br/>health probe · security · WhiteNoise] --> views
@@ -105,7 +135,9 @@ packing/
   services/    units (cm/kg <-> int), validation_service, recommendation_service
   models.py    BoxRecommendation
   views.py     POST /recommend/, GET /recommendations/
-tests/         cross-app integration, API, edge-case and configuration tests
+web/           browser interface: Django view + template, ES-module client, 3D viewer (three.js)
+tests/         cross-app integration, API, web page, edge-case and configuration tests
+e2e/           browser end-to-end tests (Playwright against a live test server)
 ```
 
 ### Recommendation request flow
@@ -322,7 +354,8 @@ Utilization is compared as an exact `Fraction`, so ties are genuine ties. The de
 | Database | PostgreSQL 17 via psycopg 3, `dj-database-url` |
 | API docs | drf-spectacular (OpenAPI 3, Swagger UI, ReDoc) |
 | Serving | Gunicorn, WhiteNoise (static files) |
-| Tests | pytest, pytest-django, pytest-cov, DRF `APIClient` |
+| Web interface | Django template + vanilla ES modules (no build step), three.js r160 for the 3D view |
+| Tests | pytest, pytest-django, pytest-cov, DRF `APIClient`, Playwright (browser end-to-end) |
 | Quality | ruff (lint + format), `manage.py check --deploy`, schema validation |
 | DevOps | Docker (multi-stage, non-root), Docker Compose, GitHub Actions, Docker Hub, Hugging Face Spaces (Docker SDK) |
 
@@ -377,7 +410,7 @@ All configuration comes from environment variables. See [`.env.example`](.env.ex
 
 ## 10. API documentation
 
-Interactive documentation is at **`/api/docs/`** (Swagger UI), with **`/api/redoc/`** (ReDoc) and the raw schema at **`/api/schema/`**. The root URL `/` redirects to Swagger.
+Interactive documentation is at **`/api/docs/`** (Swagger UI), with **`/api/redoc/`** (ReDoc) and the raw schema at **`/api/schema/`**. The root URL `/` serves the web interface.
 
 | Method | Path | Description |
 |---|---|---|
@@ -544,6 +577,11 @@ How to read this:
 pytest                                   # ~600 tests, ~6 s
 pytest --cov --cov-report=term-missing   # with branch coverage
 pytest packing/tests -p no:django        # the pure engine alone, no database needed
+
+# Browser end-to-end tests (real browser -> live Django server -> PostgreSQL)
+pip install -r requirements-e2e.txt
+python -m playwright install chromium    # or use an installed Chrome: add --browser-channel chrome
+pytest e2e -v
 ruff check . && ruff format --check .
 ```
 
@@ -555,6 +593,8 @@ ruff check . && ruff format --check .
 | `tests/test_api.py` | Every endpoint, validation errors, 404/405/409/415/422/429/500 envelopes, mass-assignment rejection, health probe, OpenAPI schema |
 | `tests/test_edge_cases.py` | CHECK/UNIQUE/PROTECT constraints, snapshots, error-handler mapping, JSON logging |
 | `tests/test_configuration.py` | Env helpers, production settings fail fast (missing/weak secret, missing hosts), seed command |
+| `tests/test_web.py` | The page renders, the import map and assets resolve, and the page still renders after `collectstatic` with production **manifest** (hashed) storage |
+| `e2e/test_ui.py` | In a real browser: pack an order (3D plan, instructions, alternatives, rejections), an order no box fits, re-run from the order page, product create/validate/edit/delete, the delete conflict for a product in use, a deactivated box no longer recommended. Fails on any JavaScript error |
 
 Real output is in [TEST_OUTPUT.md](TEST_OUTPUT.md), and CI runs on every push and pull request.
 

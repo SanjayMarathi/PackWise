@@ -1,0 +1,51 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PackWise · Box Recommendation</title>
+  <meta name="description" content="Pick products and PackWise packs them in 3D to find the cheapest shipping box that fits.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%234f46e5' d='M16 2 3 9v14l13 7 13-7V9z'/%3E%3Cpath fill='%23a5b4fc' d='M16 2 3 9l13 7 13-7z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="{% static 'web/css/app.css' %}">
+  <script type="importmap">
+    {"imports": {
+      "three": "{% static 'web/vendor/three/three.module.min.js' %}",
+      "three/addons/controls/OrbitControls.js": "{% static 'web/vendor/three/addons/controls/OrbitControls.js' %}"
+    }}
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/pack" aria-label="PackWise home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><path class="brand-side" d="M16 2 3 9v14l13 7 13-7V9z"/><path class="brand-top" d="M16 2 3 9l13 7 13-7z"/></svg>
+      <span>PackWise</span>
+    </a>
+    <nav class="tabs" aria-label="Sections">
+      <a href="#/pack" data-route="pack">Pack order</a>
+      <a href="#/orders" data-route="orders">Orders</a>
+      <a href="#/products" data-route="products">Products</a>
+      <a href="#/boxes" data-route="boxes">Boxes</a>
+    </nav>
+    <div class="topbar-right">
+      <span class="health" id="health" title="API status"><span class="dot"></span><span class="label">Checking…</span></span>
+      <a class="link-quiet" href="/api/docs/" target="_blank" rel="noopener">API docs ↗</a>
+    </div>
+  </header>
+
+  <main id="app" class="page" aria-live="polite">
+    <noscript>PackWise needs JavaScript. The REST API is available at <a href="/api/docs/">/api/docs/</a>.</noscript>
+  </main>
+
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+  <footer class="footer">
+    <span>Units: cm · kg · INR</span>
+    <span>v{{ version|slice:":12" }}</span>
+    <a href="https://github.com/SanjayMarathi/PackWise" target="_blank" rel="noopener">Source</a>
+  </footer>
+
+  {{ strategies|json_script:"strategies" }}
+  {{ default_strategy|json_script:"default-strategy" }}
+  <script type="module" src="{% static 'web/js/app.js' %}"></script>
+</body>
+</html>

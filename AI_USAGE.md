@@ -27,6 +27,7 @@ This project was built with heavy AI assistance. This file records what the AI d
 
    It contained explicit instructions not to fabricate test results, deployments, transcripts or personal learnings, to work phase by phase and verify each phase, and to ask before external account actions.
 2. **Follow-up prompts / answers.** When the AI asked about the external accounts, I approved a public GitHub repository `SanjayMarathi/PackWise` and gave the Docker Hub username `sanjaymarathi`. Instead of Render, I asked for deployment on my Hugging Face account (Pro), which changed the deployment target.
+3. **Web interface request.** After the API was deployed, I pointed out that the assignment needs a working web page that demonstrates the functions, not only an API and Swagger. The AI then built the browser interface in `web/`: an order builder, a 3D packing plan with a loading-sequence player, packing instructions, alternatives, rejection reasons, order history and product/box management. It also added Playwright browser tests.
    ✍️ Author: _add any later follow-up messages from the transcript._
 
 The exact wording of every prompt is in the exported transcript.
@@ -85,6 +86,14 @@ These are changes made **during the session**, mostly when the AI caught its own
 | 17 | Render deployment (`render.yaml`, deploy-hook CI step) | I chose Hugging Face Spaces instead | Replaced with `deploy/huggingface/` (Space Dockerfile pinned to the Docker Hub image, `deploy.py`, CI step); uid changed 10001 → 1000 (Spaces' uid); `SPACE_HOST` host detection; CSP `frame-ancestors` so the Space page can embed the app; secure-cookie flag decoupled from the SSL-redirect flag |
 | 18 | `FrameAncestorsMiddleware` read `settings.FRAME_ANCESTORS` directly | Self-review: only production settings define it, so it would crash elsewhere | Falls back to an empty list |
 | 19 | Image code owned by the runtime user (`COPY --chown`) | Hardening review: a compromised process could rewrite its own code | Code root-owned and read-only; verified `touch /app/x` → permission denied |
+| 20 | The first delivery was API + Swagger only | I asked for a real web page | Built the `web` app (Django view + ES-module client + three.js viewer) and browser end-to-end tests |
+| 21 | Import map pointed `{% static %}` at a **directory** (`three/addons/`) | Self-review: production's hashed manifest storage has no entry for directories, so every page load would have raised an error, while development looked fine | Exact file mapping; new test runs `collectstatic` with manifest storage and renders the page |
+| 22 | 3D camera fitted to the bounding **sphere** | Screenshot review: a flat 50×40×10 box filled about a third of the view | Exact fit that projects the 8 box corners onto the camera axes |
+| 23 | `.viewer-card .card-body { padding: 0 }` | Screenshot review: it also removed the legend's padding | Rule scoped to the canvas container |
+| 24 | “fits all 1 items” / “All 1 items placed” | Seen in the phone-size screenshot | Singular and plural wording |
+| 25 | E2E test used `locator(".toast")` | Test failed with Playwright strict mode: an earlier toast was still visible (the app was right) | Locator narrowed by text |
+| 26 | Gunicorn 26 control socket under `$HOME` (= read-only `/app` after #19) | `Control server error: Permission denied` in container logs | `--no-control-socket` (the platform manages the process); verified the error is gone |
+| 27 | Dockerfile `# syntax=docker/dockerfile:1.7` line | An extra registry pull with no feature in use (found when a local Docker Hub sign-in broke builds) | Removed |
 
 ✍️ Author: _add anything I rejected, rewrote or asked the AI to change after reviewing the code myself._
 
@@ -118,8 +127,18 @@ Everything below was **run**, not assumed. The outputs are in the transcript and
    * `docker compose up --build`: migrations job, healthy web container, running as the non-root uid 1000 with read-only code;
    * a real HTTP flow (create order → recommend → fetch stored result);
    * the production-like compose stack: unknown Host gives 400, probe Host gives 200, security headers present, JSON 404s, JSON logs.
-6. **CI:** GitHub Actions runs lint, migrations, schema validation, tests with a coverage gate (≥ 90%) on Python 3.12 and 3.14, the deploy checklist, and an image smoke test before publishing.
-7. **Deployment:** the public URL https://sanjaymarathi-packwise.hf.space was checked with real requests after CI deployed it:
+6. **CI:** GitHub Actions runs:
+   * lint, migrations and schema validation;
+   * tests with a coverage gate (≥ 90%) on Python 3.12 and 3.14;
+   * the browser end-to-end tests;
+   * the deploy checklist;
+   * an image smoke test before publishing (API, plus the web page and its hashed 3D assets).
+7. **Web interface:**
+   * driven in a real headless Chrome with Playwright, in light, dark and phone layouts;
+   * screenshots were inspected after each change, which is how mistakes #22–#24 were found;
+   * no JavaScript errors, and no horizontal overflow at 390 px width;
+   * six end-to-end tests cover the main journeys and fail on any JavaScript error.
+8. **Deployment:** the public URL https://sanjaymarathi-packwise.hf.space was checked with real requests after CI deployed it:
    * `/api/health/` returned database `ok` and version = the deployed commit SHA;
    * the seeded catalogue was present;
    * create order → recommend returned `BX-M-FLAT` at ₹35, the same as locally, and the stored result matched;

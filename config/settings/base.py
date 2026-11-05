@@ -83,6 +83,7 @@ INSTALLED_APPS = [
     "inventory",
     "orders",
     "packing",
+    "web",
 ]
 
 MIDDLEWARE = [

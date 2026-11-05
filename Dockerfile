@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # ---------- Stage 1: build wheels (compilers and caches never reach the runtime image)
 FROM python:3.12-slim-bookworm AS builder
 

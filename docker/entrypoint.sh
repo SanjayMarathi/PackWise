@@ -26,7 +26,10 @@ case "${1:-web}" in
             --timeout "${GUNICORN_TIMEOUT:-60}" \
             --access-logfile - \
             --error-logfile - \
-            --forwarded-allow-ips "*"
+            --forwarded-allow-ips "*" \
+            --no-control-socket
+        # --no-control-socket: Gunicorn >= 25.1 opens a runtime-control socket under $HOME,
+        # which is read-only here; the platform, not gunicornc, manages the process.
         ;;
     migrate)
         run_migrations

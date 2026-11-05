@@ -1,0 +1,4 @@
+-r requirements-dev.txt
+# Browser end-to-end tests (e2e/). Browsers: `python -m playwright install chromium`
+playwright==1.64.1
+pytest-playwright==0.10.0

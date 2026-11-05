@@ -86,6 +86,12 @@ jobs:
             -d "{\"items\": [{\"product_id\": $laptop, \"quantity\": 2}]}" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
           curl -fsS -X POST "http://localhost:8000/api/orders/$order/recommend/" -H 'Content-Type: application/json' -d '{}' \
             | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["status"] == "success", d; print("recommended:", d["recommendation"]["box_code"])'
+          # The web interface and its hashed static assets (manifest storage) are served.
+          page=$(curl -fsS http://localhost:8000/)
+          echo "$page" | grep -q 'id="app"'
+          three=$(echo "$page" | grep -oE '/static/web/vendor/three/three\.module\.min\.[0-9a-f]{12}\.js' | head -1)
+          test -n "$three" && curl -fsS -o /dev/null "http://localhost:8000$three"
+          curl -fsS -o /dev/null http://localhost:8000/static/web/js/views/result.js
           test "$(docker inspect -f '{{.Config.User}}' packwise:ci)" = "app"
 
       - name: Container logs (on failure)

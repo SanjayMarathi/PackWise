@@ -360,6 +360,7 @@ def test_recommendation_generation(api_client, ordered_laptops, catalog):
     assert rec["cost"] == 35.0
     assert rec["total_weight"] == 2.9
     assert rec["packing_feasible"] is True
+    assert rec["max_weight"] == 15.0  # the box's load limit, shown next to the order weight
     assert 0 < rec["utilization"] <= 100
     assert len(rec["placements"]) == 3
     assert [a["box_code"] for a in body["alternatives"]] == ["MEDIUM", "LARGE"]
@@ -525,4 +526,4 @@ def test_openapi_schema_and_docs_are_served(api_client):
     for path in ("/api/products/", "/api/boxes/", "/api/orders/{id}/items/", "/api/orders/{order_id}/recommend/"):
         assert path in content
     assert api_client.get("/api/docs/").status_code == 200
-    assert api_client.get("/").status_code == 302
+    assert api_client.get("/").status_code == 200  # the browser interface
