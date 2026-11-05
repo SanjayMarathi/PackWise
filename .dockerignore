@@ -1,0 +1,41 @@
+# VCS and CI
+.git
+.github
+.gitignore
+.gitattributes
+
+# Python artefacts and local environments
+.venv
+venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+.coverage
+coverage.xml
+htmlcov
+*.egg-info
+
+# Secrets and local config — never bake these into an image
+.env
+.env.*
+!.env.example
+
+# Generated at build time inside the image
+staticfiles
+
+# Editor / OS noise
+.vscode
+.idea
+*.swp
+.DS_Store
+Thumbs.db
+
+# Docs and tests are not needed at runtime
+*.md
+docs
+tests
+**/tests
+conftest.py
+docker-compose*.yml
+render.yaml

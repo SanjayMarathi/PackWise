@@ -1,0 +1,132 @@
+name: Docker
+
+# Publishing is gated on the test suite. The image is pushed only after the "Tests"
+# workflow has succeeded for a push to main. Pull requests build and smoke-test the image
+# but never push it.
+on:
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  image:
+    name: Build, smoke-test and publish image
+    runs-on: ubuntu-latest
+    # For workflow_run, only continue when the tests passed for a push (not for a PR run).
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: packwise
+          POSTGRES_USER: packwise
+          POSTGRES_PASSWORD: packwise
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U packwise -d packwise"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      COMMIT_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      PUBLISH: ${{ github.event_name == 'workflow_run' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') }}
+      IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME || 'local' }}/packwise
+
+    steps:
+      - name: Checkout the tested commit
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (load locally for smoke test)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          tags: packwise:ci
+          build-args: APP_VERSION=${{ env.COMMIT_SHA }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test the image against PostgreSQL
+        run: |
+          docker run -d --name packwise --network host \
+            -e DJANGO_SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(64))')" \
+            -e DATABASE_URL=postgres://packwise:packwise@localhost:5432/packwise \
+            -e DJANGO_ALLOWED_HOSTS=localhost \
+            -e DJANGO_SECURE_SSL_REDIRECT=false \
+            -e RUN_MIGRATIONS=true -e SEED_DEMO_DATA=true \
+            packwise:ci
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8000/api/health/ && break
+            sleep 2
+          done
+          echo
+          curl -fsS http://localhost:8000/api/health/ | grep '"database": "ok"'
+          laptop=$(curl -fsS 'http://localhost:8000/api/products/?search=LAPTOP-14' | python3 -c 'import sys,json; print(json.load(sys.stdin)["results"][0]["id"])')
+          order=$(curl -fsS -X POST http://localhost:8000/api/orders/ -H 'Content-Type: application/json' \
+            -d "{\"items\": [{\"product_id\": $laptop, \"quantity\": 2}]}" | python3 -c 'import sys,json; print(json.load(sys.stdin)["id"])')
+          curl -fsS -X POST "http://localhost:8000/api/orders/$order/recommend/" -H 'Content-Type: application/json' -d '{}' \
+            | python3 -c 'import sys,json; d=json.load(sys.stdin); assert d["status"] == "success", d; print("recommended:", d["recommendation"]["box_code"])'
+          test "$(docker inspect -f '{{.Config.User}}' packwise:ci)" = "app"
+
+      - name: Container logs (on failure)
+        if: failure()
+        run: docker logs packwise || true
+
+      - name: Log in to Docker Hub
+        if: env.PUBLISH == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push image (latest + commit SHA)
+        if: env.PUBLISH == 'true'
+        id: push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          build-args: APP_VERSION=${{ env.COMMIT_SHA }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ env.COMMIT_SHA }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ env.COMMIT_SHA }}
+            org.opencontainers.image.title=PackWise
+          cache-from: type=gha
+
+      - name: Trigger Render deploy (optional)
+        if: env.PUBLISH == 'true'
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL not set; skipping deploy."
+            exit 0
+          fi
+          image="docker.io/${IMAGE_NAME}@${DIGEST}"
+          encoded=$(python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$image")
+          curl -fsS -X POST "${RENDER_DEPLOY_HOOK_URL}&imgURL=${encoded}" > /dev/null
+          echo "Render deploy triggered for $image"

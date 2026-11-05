@@ -1,0 +1,57 @@
+# Production-like stack using the published Docker Hub image and hardened settings.
+#
+#   cp .env.example .env    # then set DJANGO_SECRET_KEY, POSTGRES_PASSWORD, ...
+#   docker compose -f docker-compose.prod.yml --env-file .env up -d
+#
+# TLS is expected to be terminated by a reverse proxy / platform in front of this stack.
+
+name: packwise-prod
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-packwise}
+      POSTGRES_USER: ${POSTGRES_USER:-packwise}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    image: ${PACKWISE_IMAGE:-packwise:local}
+    command: ["migrate"]
+    environment: &app-env
+      DJANGO_SETTINGS_MODULE: config.settings.production
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?set DJANGO_SECRET_KEY in .env}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-false}
+      DATABASE_URL: postgres://${POSTGRES_USER:-packwise}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-packwise}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-false}
+      LOG_FORMAT: json
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: ${PACKWISE_IMAGE:-packwise:local}
+    restart: unless-stopped
+    command: ["web"]
+    environment:
+      <<: *app-env
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-3}
+    ports:
+      - "${WEB_PORT:-8080}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata_prod:

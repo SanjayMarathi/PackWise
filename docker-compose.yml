@@ -1,0 +1,57 @@
+# Local stack: PostgreSQL + one-shot migrations + Django (production image, debug-friendly settings).
+#
+#   docker compose up --build        ->  http://localhost:8000/api/docs/
+#
+# For a production-like run (DEBUG off, Gunicorn, hardened settings) see docker-compose.prod.yml.
+
+name: packwise
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: packwise
+      POSTGRES_USER: packwise
+      POSTGRES_PASSWORD: packwise   # local-only credential
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"   # 5433 on the host avoids clashing with a locally installed PostgreSQL
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U packwise -d packwise"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Runs once and exits. `web` only starts after it succeeds, so the schema is always current
+  # and migrations never race between multiple web replicas.
+  migrate:
+    build: .
+    image: packwise:local
+    command: ["migrate"]
+    environment: &app-env
+      DJANGO_SETTINGS_MODULE: config.settings.development
+      DJANGO_DEBUG: "true"
+      DATABASE_URL: postgres://packwise:packwise@db:5432/packwise
+      SEED_DEMO_DATA: "true"
+      LOG_FORMAT: text
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: packwise:local
+    command: ["web"]
+    environment:
+      <<: *app-env
+      WEB_CONCURRENCY: "2"
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+volumes:
+  pgdata:

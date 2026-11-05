@@ -1,0 +1,8 @@
+# Runtime dependencies (pinned; verified on Python 3.12 and 3.14).
+Django==5.2.19                 # LTS release, supported until April 2028
+djangorestframework==3.18.3
+drf-spectacular==0.30.0        # OpenAPI 3 schema + Swagger UI / ReDoc
+psycopg[binary]==3.3.8         # PostgreSQL driver
+dj-database-url==3.1.2         # DATABASE_URL parsing
+gunicorn==26.2.0               # production WSGI server
+whitenoise==6.12.0             # static files (admin, Swagger UI assets) without a CDN/nginx

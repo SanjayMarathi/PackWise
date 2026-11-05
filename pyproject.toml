@@ -1,0 +1,49 @@
+[project]
+name = "packwise"
+version = "1.0.0"
+description = "Intelligent 3D packaging and shipping-box recommendation (Django + DRF)."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+testpaths = ["packing/tests", "inventory/tests", "orders/tests", "tests"]
+python_files = ["test_*.py"]
+addopts = "-ra --strict-markers"
+filterwarnings = ["error::RuntimeWarning"]
+
+[tool.coverage.run]
+branch = true
+source = ["packing", "inventory", "orders", "common", "config"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "config/wsgi.py",
+    "config/asgi.py",
+    # Production/development settings are exercised by `manage.py check --deploy` in CI,
+    # not imported by the test process (which uses config.settings.test).
+    "config/settings/production.py",
+    "config/settings/development.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+precision = 1
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "SIM", "RUF"]
+ignore = [
+    "RUF001",  # the × sign in human-readable messages is intentional
+    "RUF012",  # Django/DRF class attributes (Meta.fields etc.) are conventionally mutable
+]
+
+[tool.ruff.lint.per-file-ignores]
+"*/tests/*" = ["S101", "S311"]   # asserts and seeded `random` are fine in tests
+"tests/*" = ["S101", "S311"]
+"config/settings/*" = ["F405"]   # star imports from base settings

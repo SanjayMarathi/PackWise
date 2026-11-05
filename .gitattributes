@@ -1,0 +1,5 @@
+# Normalise line endings in the repository.
+* text=auto
+# Shell scripts and the Dockerfile must keep LF endings or they fail inside Linux containers.
+*.sh text eol=lf
+Dockerfile text eol=lf
